@@ -1,1075 +1,955 @@
-html
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>mRNA Kart — Escape the Nucleus</title>
+<title>Protein Synthesis Kart</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
-
-  :root {
-    --neon-green:  #00ffaa;
-    --neon-blue:   #00cfff;
-    --neon-pink:   #ff3fa4;
-    --neon-purple: #b06aff;
-    --neon-amber:  #ffc43d;
-    --bg-deep:     #04060f;
-    --bg-mid:      #080d1e;
-    --track-fill:  #0d1533;
-    --track-edge:  #1a2a5e;
-    --wall-color:  #ff3fa4;
-  }
-
-  * { margin:0; padding:0; box-sizing:border-box; }
-
-  body {
-    background: var(--bg-deep);
-    font-family: 'Orbitron', monospace;
-    overflow: hidden;
-    width: 100vw; height: 100vh;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  canvas {
-    display: block;
-    image-rendering: pixelated;
-  }
-
-  /* ── SCREENS ── */
-  .screen {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.6s ease;
-  }
-  .screen.hidden { opacity: 0; pointer-events: none; }
-
-  /* ── START SCREEN ── */
-  #startScreen {
-    background: radial-gradient(ellipse 80% 70% at 50% 50%, #0d1533 0%, #04060f 100%);
-    z-index: 20;
-  }
-
-  .title-wrapper { position: relative; text-align: center; margin-bottom: 2rem; }
-
-  .title-main {
-    font-size: clamp(2.8rem, 7vw, 5.5rem);
-    font-weight: 900;
-    letter-spacing: 0.12em;
-    line-height: 1;
-    color: var(--neon-green);
-    text-shadow: 0 0 20px rgba(0,255,170,0.8), 0 0 60px rgba(0,255,170,0.4);
-    animation: titlePulse 2.5s ease-in-out infinite;
-  }
-  .title-sub {
-    font-size: clamp(0.8rem, 2vw, 1.15rem);
-    color: var(--neon-blue);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    margin-top: 0.5rem;
-    text-shadow: 0 0 10px rgba(0,207,255,0.7);
-    font-family: 'Space Mono', monospace;
-  }
-
-  @keyframes titlePulse {
-    0%,100% { text-shadow: 0 0 20px rgba(0,255,170,0.8), 0 0 60px rgba(0,255,170,0.4); }
-    50%      { text-shadow: 0 0 40px rgba(0,255,170,1),   0 0 100px rgba(0,255,170,0.6); }
-  }
-
-  .dna-decor {
-    position: absolute;
-    font-size: 1rem;
-    color: var(--neon-purple);
-    opacity: 0.35;
-    font-family: 'Space Mono', monospace;
-    animation: floatUp 6s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  @keyframes floatUp {
-    0%,100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
-    50%      { transform: translateY(-18px) rotate(8deg); opacity: 0.6; }
-  }
-
-  .start-btn {
-    position: relative;
-    background: transparent;
-    border: 2px solid var(--neon-green);
-    color: var(--neon-green);
-    font-family: 'Orbitron', monospace;
-    font-size: 1.2rem;
-    font-weight: 700;
-    letter-spacing: 0.25em;
-    padding: 1rem 3.5rem;
-    cursor: pointer;
-    text-transform: uppercase;
-    transition: all 0.2s ease;
-    box-shadow: 0 0 18px rgba(0,255,170,0.4), inset 0 0 18px rgba(0,255,170,0.05);
-    border-radius: 4px;
-    overflow: hidden;
-    margin-top: 1rem;
-  }
-  .start-btn::before {
-    content: '';
-    position: absolute; inset: 0;
-    background: var(--neon-green);
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  .start-btn:hover::before { opacity: 0.12; }
-  .start-btn:hover {
-    box-shadow: 0 0 36px rgba(0,255,170,0.7), inset 0 0 30px rgba(0,255,170,0.1);
-    transform: scale(1.04);
-  }
-  .start-btn:active { transform: scale(0.98); }
-
-  .controls-hint {
-    margin-top: 2.5rem;
-    color: rgba(255,255,255,0.35);
-    font-family: 'Space Mono', monospace;
-    font-size: 0.72rem;
-    letter-spacing: 0.15em;
-    text-align: center;
-    line-height: 1.9;
-  }
-  .controls-hint span { color: var(--neon-blue); }
-
-  /* ── HUD ── */
-  #hud {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    z-index: 10;
-    pointer-events: none;
-    padding: 14px 22px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: linear-gradient(to bottom, rgba(4,6,15,0.85) 0%, transparent 100%);
-  }
-  #hud.hidden { display: none; }
-
-  .hud-block {
-    display: flex; flex-direction: column; gap: 2px;
-  }
-  .hud-label {
-    font-size: 0.55rem; letter-spacing: 0.25em;
-    color: rgba(255,255,255,0.35); font-family: 'Space Mono', monospace;
-  }
-  .hud-value {
-    font-size: 1.2rem; font-weight: 700;
-    color: var(--neon-green);
-    text-shadow: 0 0 10px rgba(0,255,170,0.6);
-    font-family: 'Orbitron', monospace;
-    min-width: 80px;
-  }
-
-  .hud-seq {
-    display: flex; gap: 5px; align-items: center;
-  }
-  .nt-chip {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.7rem; font-weight: 700; font-family: 'Orbitron', monospace;
-    border: 1.5px solid;
-    transition: all 0.3s;
-  }
-  .nt-chip.done   { opacity: 0.3; }
-  .nt-chip.active { transform: scale(1.3); box-shadow: 0 0 14px currentColor; }
-
-  .nt-A { color: #00ffaa; border-color: #00ffaa; background: rgba(0,255,170,0.1); }
-  .nt-U { color: #ff3fa4; border-color: #ff3fa4; background: rgba(255,63,164,0.1); }
-  .nt-G { color: #b06aff; border-color: #b06aff; background: rgba(176,106,255,0.1); }
-  .nt-C { color: #00cfff; border-color: #00cfff; background: rgba(0,207,255,0.1); }
-
-  /* ── COUNTDOWN ── */
-  #countdown {
-    position: absolute; inset: 0; z-index: 15;
-    display: flex; align-items: center; justify-content: center;
-    pointer-events: none;
-  }
-  #countdown.hidden { display: none; }
-  #cdNum {
-    font-size: 12rem; font-weight: 900;
-    color: var(--neon-green);
-    text-shadow: 0 0 60px rgba(0,255,170,0.9);
-    animation: cdPop 0.9s ease-out;
-    font-family: 'Orbitron', monospace;
-  }
-  @keyframes cdPop {
-    0%   { transform: scale(2.5); opacity: 0; }
-    40%  { transform: scale(0.9); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-
-  /* ── WIN SCREEN ── */
-  #winScreen {
-    background: radial-gradient(ellipse 80% 70% at 50% 50%, #051a10 0%, #04060f 100%);
-    z-index: 20;
-    gap: 0;
-  }
-  #winScreen.hidden { opacity: 0; pointer-events: none; }
-
-  .win-title {
-    font-size: clamp(2rem, 6vw, 4.5rem);
-    font-weight: 900;
-    color: var(--neon-green);
-    text-shadow: 0 0 30px rgba(0,255,170,0.9);
-    letter-spacing: 0.15em;
-    animation: winGlow 1.5s ease-in-out infinite;
-    margin-bottom: 0.4rem;
-  }
-  @keyframes winGlow {
-    0%,100% { text-shadow: 0 0 30px rgba(0,255,170,0.9); }
-    50%      { text-shadow: 0 0 70px rgba(0,255,170,1), 0 0 120px rgba(0,255,170,0.5); }
-  }
-  .win-protein {
-    font-family: 'Space Mono', monospace;
-    color: var(--neon-blue);
-    font-size: clamp(0.75rem, 1.8vw, 1rem);
-    letter-spacing: 0.2em;
-    margin-bottom: 1.5rem;
-    text-shadow: 0 0 10px rgba(0,207,255,0.7);
-  }
-  .win-stats {
-    display: flex; gap: 2.5rem; margin-bottom: 2rem;
-    font-family: 'Space Mono', monospace;
-  }
-  .win-stat-item { text-align: center; }
-  .win-stat-val  { font-size: 2rem; font-weight: 700; color: var(--neon-amber); display: block; text-shadow: 0 0 14px rgba(255,196,61,0.7); }
-  .win-stat-lbl  { font-size: 0.6rem; color: rgba(255,255,255,0.4); letter-spacing: 0.2em; text-transform: uppercase; }
-
-  .particle-canvas {
-    position: absolute; inset: 0; pointer-events: none; z-index: 19;
-  }
-
-  /* ── DEAD SCREEN ── */
-  #deadScreen {
-    background: radial-gradient(ellipse 80% 70% at 50% 50%, #1a0510 0%, #04060f 100%);
-    z-index: 20;
-  }
-  .dead-title {
-    font-size: clamp(2rem, 6vw, 4rem);
-    font-weight: 900;
-    color: var(--neon-pink);
-    text-shadow: 0 0 30px rgba(255,63,164,0.9);
-    letter-spacing: 0.12em;
-    margin-bottom: 0.5rem;
-    animation: shake 0.4s ease;
-  }
-  @keyframes shake {
-    0%,100% { transform: translateX(0); }
-    20%      { transform: translateX(-12px); }
-    40%      { transform: translateX(12px); }
-    60%      { transform: translateX(-8px); }
-    80%      { transform: translateX(8px); }
-  }
-  .dead-sub {
-    font-family: 'Space Mono', monospace;
-    color: rgba(255,255,255,0.5);
-    font-size: 0.9rem;
-    letter-spacing: 0.2em;
-    margin-bottom: 2rem;
-  }
-
-  .retry-btn {
-    background: transparent;
-    border: 2px solid var(--neon-pink);
-    color: var(--neon-pink);
-    font-family: 'Orbitron', monospace;
-    font-size: 1rem; font-weight: 700;
-    letter-spacing: 0.25em;
-    padding: 0.9rem 3rem;
-    cursor: pointer;
-    border-radius: 4px;
-    box-shadow: 0 0 18px rgba(255,63,164,0.4);
-    transition: all 0.2s;
-  }
-  .retry-btn:hover {
-    box-shadow: 0 0 36px rgba(255,63,164,0.7);
-    transform: scale(1.05);
-  }
-
-  /* ── DAMAGE FLASH ── */
-  #damageFlash {
-    position: absolute; inset: 0; z-index: 12;
-    background: rgba(255,63,164,0.3);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.1s;
-  }
-  #damageFlash.active { opacity: 1; }
-
-  /* ── SPEED LINES ── */
-  #speedCanvas {
-    position: absolute; inset: 0; pointer-events: none; z-index: 8;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  #speedCanvas.boost { opacity: 1; }
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Courier+Prime:wght@400;700&display=swap');
+ 
+:root {
+  --dna-blue:    #4fc3f7;
+  --rna-amber:   #ffb74d;
+  --nucleus-bg:  #0d1b3e;
+  --cytoplasm-bg:#0a2e1a;
+  --neon-green:  #69ff47;
+  --neon-pink:   #ff4fa3;
+  --tRNA-teal:   #26c6da;
+  --amino-gold:  #ffd54f;
+  --wall-col:    #1565c0;
+  --wall-cyto:   #1b5e20;
+  --ui-bg:       rgba(0,0,0,0.72);
+  --font-main:   'Nunito', sans-serif;
+  --font-mono:   'Courier Prime', monospace;
+}
+ 
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;font-family:var(--font-main);overflow:hidden;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;}
+canvas{display:block;}
+ 
+/* ── SCREENS ── */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s;z-index:30;}
+.screen.hidden{opacity:0;pointer-events:none;}
+ 
+/* ── START ── */
+#startScreen{background:radial-gradient(ellipse 90% 80% at 50% 50%,#0a1628 0%,#000 100%);}
+.logo-wrap{text-align:center;margin-bottom:1.8rem;}
+.logo-title{font-size:clamp(2.4rem,6vw,5rem);font-weight:900;line-height:1;letter-spacing:-.01em;
+  background:linear-gradient(135deg,#4fc3f7,#69ff47,#ffb74d);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 30px rgba(79,195,247,.4));}
+.logo-sub{font-size:clamp(.75rem,1.8vw,1.1rem);color:rgba(255,255,255,.5);letter-spacing:.3em;text-transform:uppercase;margin-top:.4rem;font-family:var(--font-mono);}
+ 
+.phase-cards{display:flex;gap:1.2rem;margin-bottom:2rem;flex-wrap:wrap;justify-content:center;padding:0 1rem;}
+.phase-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:1rem 1.4rem;max-width:200px;text-align:left;}
+.phase-card h3{font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;margin-bottom:.6rem;font-family:var(--font-mono);}
+.phase-card.nucleus h3{color:var(--dna-blue);}
+.phase-card.cytoplasm h3{color:var(--neon-green);}
+.phase-card ul{list-style:none;font-size:.72rem;line-height:1.8;color:rgba(255,255,255,.65);}
+.phase-card ul li::before{content:'▸ ';opacity:.5;}
+ 
+.start-btn{background:transparent;border:2px solid var(--neon-green);color:var(--neon-green);
+  font-family:var(--font-main);font-size:1.1rem;font-weight:700;letter-spacing:.2em;
+  padding:.9rem 3.5rem;cursor:pointer;border-radius:8px;text-transform:uppercase;
+  box-shadow:0 0 24px rgba(105,255,71,.35);transition:all .2s;}
+.start-btn:hover{box-shadow:0 0 48px rgba(105,255,71,.6);transform:scale(1.04);}
+.controls-hint{margin-top:1.6rem;color:rgba(255,255,255,.3);font-size:.7rem;letter-spacing:.15em;text-align:center;line-height:2;font-family:var(--font-mono);}
+.controls-hint b{color:rgba(255,255,255,.6);}
+ 
+/* ── HUD ── */
+#hud{position:absolute;top:0;left:0;right:0;z-index:20;pointer-events:none;
+  display:flex;align-items:stretch;justify-content:space-between;gap:8px;
+  padding:10px 14px;background:var(--ui-bg);border-bottom:1px solid rgba(255,255,255,.08);}
+#hud.hidden{display:none;}
+.hud-block{display:flex;flex-direction:column;gap:1px;}
+.hud-lbl{font-size:.52rem;letter-spacing:.2em;color:rgba(255,255,255,.35);text-transform:uppercase;font-family:var(--font-mono);}
+.hud-val{font-size:1rem;font-weight:700;color:#fff;}
+.hud-phase{background:rgba(255,255,255,.06);border-radius:8px;padding:4px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center;}
+.hud-phase-name{font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;font-family:var(--font-mono);}
+.hud-phase-name.nucleus{color:var(--dna-blue);}
+.hud-phase-name.cytoplasm{color:var(--neon-green);}
+.hud-seq{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.nt{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;font-weight:700;border:1.5px solid;transition:all .25s;font-family:var(--font-mono);}
+.nt.A{color:#69ff47;border-color:#69ff47;background:rgba(105,255,71,.1);}
+.nt.U{color:#ff4fa3;border-color:#ff4fa3;background:rgba(255,79,163,.1);}
+.nt.G{color:#b06aff;border-color:#b06aff;background:rgba(176,106,255,.1);}
+.nt.C{color:#4fc3f7;border-color:#4fc3f7;background:rgba(79,195,247,.1);}
+.nt.done{opacity:.25;}
+.nt.next{transform:scale(1.3);box-shadow:0 0 12px currentColor;}
+ 
+/* ── INFO POPUP ── */
+#infoBox{position:absolute;bottom:0;left:0;right:0;z-index:25;pointer-events:none;
+  background:var(--ui-bg);border-top:1px solid rgba(255,255,255,.08);
+  padding:10px 18px;display:flex;align-items:center;gap:14px;
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.22,1,.36,1);}
+#infoBox.show{transform:translateY(0);}
+.info-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.info-title{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;font-family:var(--font-mono);}
+.info-body{font-size:.78rem;color:rgba(255,255,255,.75);line-height:1.5;}
+ 
+/* ── COUNTDOWN ── */
+#countdown{position:absolute;inset:0;z-index:28;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+#countdown.hidden{display:none;}
+#cdNum{font-size:10rem;font-weight:900;color:var(--neon-green);
+  text-shadow:0 0 60px rgba(105,255,71,.8);animation:cdpop .85s ease-out;}
+@keyframes cdpop{0%{transform:scale(2.5);opacity:0;}45%{transform:scale(.9);opacity:1;}100%{transform:scale(1);}}
+ 
+/* ── PHASE TRANSITION ── */
+#phaseBanner{position:absolute;inset:0;z-index:27;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.82);pointer-events:none;transition:opacity .5s;}
+#phaseBanner.hidden{opacity:0;pointer-events:none;}
+.pb-label{font-size:.8rem;letter-spacing:.35em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:.5rem;font-family:var(--font-mono);}
+.pb-title{font-size:clamp(2rem,6vw,4rem);font-weight:900;letter-spacing:.05em;}
+.pb-title.t{color:var(--dna-blue);text-shadow:0 0 40px rgba(79,195,247,.7);}
+.pb-title.r{color:var(--neon-green);text-shadow:0 0 40px rgba(105,255,71,.7);}
+.pb-desc{font-size:.88rem;color:rgba(255,255,255,.6);margin-top:.8rem;max-width:440px;text-align:center;line-height:1.7;}
+ 
+/* ── WIN SCREEN ── */
+#winScreen{background:radial-gradient(ellipse 90% 80% at 50% 50%,#051a10 0%,#000 100%);}
+.win-title{font-size:clamp(2rem,6vw,4.5rem);font-weight:900;color:var(--neon-green);
+  text-shadow:0 0 40px rgba(105,255,71,.9);margin-bottom:.3rem;animation:winpulse 1.8s ease-in-out infinite;}
+@keyframes winpulse{0%,100%{text-shadow:0 0 30px rgba(105,255,71,.8);}50%{text-shadow:0 0 80px rgba(105,255,71,1);}}
+.win-protein{font-family:var(--font-mono);color:var(--amino-gold);font-size:clamp(.75rem,2vw,1.05rem);
+  letter-spacing:.15em;margin-bottom:1.2rem;text-shadow:0 0 10px rgba(255,213,79,.6);}
+.win-chain{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:1.6rem;max-width:500px;}
+.win-aa{padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:700;
+  background:rgba(255,213,79,.15);border:1px solid var(--amino-gold);color:var(--amino-gold);font-family:var(--font-mono);}
+.win-summary{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;
+  padding:1.2rem 2rem;margin-bottom:1.5rem;display:flex;gap:2.5rem;}
+.ws-item{text-align:center;}
+.ws-val{font-size:1.8rem;font-weight:900;color:#fff;display:block;}
+.ws-lbl{font-size:.6rem;letter-spacing:.2em;color:rgba(255,255,255,.4);text-transform:uppercase;font-family:var(--font-mono);}
+.win-glossary{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;
+  padding:1rem 1.4rem;max-width:520px;margin-bottom:1.4rem;}
+.win-glossary h4{font-size:.65rem;letter-spacing:.25em;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:.6rem;font-family:var(--font-mono);}
+.gl-grid{display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem;}
+.gl-item{font-size:.7rem;color:rgba(255,255,255,.65);line-height:1.5;}
+.gl-item b{color:#fff;}
+ 
+/* ── DEAD ── */
+#deadScreen{background:radial-gradient(ellipse 80% 70% at 50% 50%,#1a0508 0%,#000 100%);}
+.dead-title{font-size:clamp(2rem,6vw,4rem);font-weight:900;color:var(--neon-pink);
+  text-shadow:0 0 30px rgba(255,79,163,.9);margin-bottom:.4rem;animation:shake .4s ease;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-14px);}75%{transform:translateX(14px);}50%{transform:translateX(10px);}}
+.dead-sub{color:rgba(255,255,255,.45);font-size:.9rem;margin-bottom:1.8rem;font-family:var(--font-mono);}
+.retry-btn{background:transparent;border:2px solid var(--neon-pink);color:var(--neon-pink);
+  font-family:var(--font-main);font-size:1rem;font-weight:700;letter-spacing:.2em;
+  padding:.85rem 3rem;cursor:pointer;border-radius:8px;text-transform:uppercase;
+  box-shadow:0 0 20px rgba(255,79,163,.35);transition:all .2s;}
+.retry-btn:hover{box-shadow:0 0 40px rgba(255,79,163,.6);transform:scale(1.04);}
+ 
+/* ── DAMAGE ── */
+#dmgFlash{position:absolute;inset:0;z-index:22;background:rgba(255,79,163,.28);pointer-events:none;opacity:0;transition:opacity .1s;}
+#dmgFlash.on{opacity:1;}
+ 
+/* ── PARTICLE CANVAS ── */
+#pc{position:absolute;inset:0;pointer-events:none;z-index:21;}
 </style>
 </head>
 <body>
-
-<!-- GAME CANVAS -->
-<canvas id="gameCanvas"></canvas>
-<canvas id="speedCanvas"></canvas>
-<canvas id="particleCanvas" class="particle-canvas"></canvas>
-
+ 
+<canvas id="gc"></canvas>
+<canvas id="pc"></canvas>
+ 
 <!-- HUD -->
 <div id="hud" class="hidden">
   <div class="hud-block">
-    <div class="hud-label">SPEED</div>
-    <div class="hud-value" id="hudSpeed">0 kbps</div>
+    <div class="hud-lbl">Health</div>
+    <div class="hud-val" id="hudHp">♥♥♥</div>
   </div>
-  <div class="hud-block" style="align-items:center;">
-    <div class="hud-label" style="text-align:center;">COLLECT IN ORDER</div>
+  <div class="hud-block" style="flex:1;align-items:center;">
+    <div class="hud-lbl" style="text-align:center;">Collect in order</div>
     <div class="hud-seq" id="hudSeq"></div>
   </div>
+  <div class="hud-phase">
+    <div class="hud-lbl">Location</div>
+    <div class="hud-phase-name nucleus" id="hudPhase">Nucleus</div>
+  </div>
   <div class="hud-block" style="align-items:flex-end;">
-    <div class="hud-label">HEALTH</div>
-    <div class="hud-value" id="hudHp">♥♥♥</div>
+    <div class="hud-lbl">Score</div>
+    <div class="hud-val" id="hudScore">0</div>
   </div>
 </div>
-
-<!-- COUNTDOWN -->
-<div id="countdown" class="hidden">
-  <div id="cdNum">3</div>
+ 
+<!-- INFO POPUP -->
+<div id="infoBox">
+  <div class="info-icon" id="infoIcon">🧬</div>
+  <div>
+    <div class="info-title" id="infoTitle">Title</div>
+    <div class="info-body"  id="infoBody">Body</div>
+  </div>
 </div>
-
+ 
+<!-- COUNTDOWN -->
+<div id="countdown" class="hidden"><div id="cdNum">3</div></div>
+ 
+<!-- PHASE BANNER -->
+<div id="phaseBanner" class="hidden">
+  <div class="pb-label" id="pbLabel">Phase complete</div>
+  <div class="pb-title" id="pbTitle">Translation</div>
+  <div class="pb-desc"  id="pbDesc">Now in the cytoplasm — the ribosome reads each codon and tRNA brings the matching amino acid.</div>
+</div>
+ 
 <!-- DAMAGE FLASH -->
-<div id="damageFlash"></div>
-
+<div id="dmgFlash"></div>
+ 
 <!-- START SCREEN -->
 <div id="startScreen" class="screen">
-  <div class="dna-decor" style="left:8%;top:15%;animation-delay:0s;">A—T<br>G—C<br>T—A</div>
-  <div class="dna-decor" style="right:9%;top:20%;animation-delay:1.5s;">U—A<br>C—G<br>A—U</div>
-  <div class="dna-decor" style="left:5%;bottom:20%;animation-delay:3s;font-size:0.75rem;">RNase<br>⚠</div>
-  <div class="dna-decor" style="right:6%;bottom:18%;animation-delay:2s;font-size:0.75rem;">⚠<br>Intron</div>
-
-  <div class="title-wrapper">
-    <div class="title-main">mRNA KART</div>
-    <div class="title-sub">Escape the Nucleus</div>
+  <div class="logo-wrap">
+    <div class="logo-title">Protein Synthesis Kart</div>
+    <div class="logo-sub">Race through Transcription & Translation</div>
   </div>
-
-  <button class="start-btn" id="startBtn">▶ START RACE</button>
-
-  <div class="controls-hint">
-    <span>↑ ↓ ← →</span> or <span>W A S D</span> &nbsp;—&nbsp; Drive<br>
-    Follow the track · Collect nucleotides in order · Reach the Ribosome
+  <div class="phase-cards">
+    <div class="phase-card nucleus">
+      <h3>🔵 Phase 1 — Transcription (Nucleus)</h3>
+      <ul>
+        <li>DNA double helix unwinds</li>
+        <li>RNA Polymerase reads the template</li>
+        <li>Nucleotides A,T,G,C → A,U,G,C</li>
+        <li>mRNA codon strand is built</li>
+        <li>mRNA exits to cytoplasm</li>
+      </ul>
+    </div>
+    <div class="phase-card cytoplasm">
+      <h3>🟢 Phase 2 — Translation (Cytoplasm)</h3>
+      <ul>
+        <li>Ribosome clamps onto mRNA</li>
+        <li>Codons are read 3 bases at a time</li>
+        <li>tRNA brings matching amino acids</li>
+        <li>Anticodon pairs with codon</li>
+        <li>Amino acid chain = protein!</li>
+      </ul>
+    </div>
   </div>
+  <button class="start-btn" id="startBtn">▶ Start Race</button>
+  <div class="controls-hint"><b>Arrow keys</b> or <b>W A S D</b> to drive &nbsp;|&nbsp; Avoid obstacles &nbsp;|&nbsp; Collect nucleotides in order</div>
 </div>
-
+ 
 <!-- WIN SCREEN -->
 <div id="winScreen" class="screen hidden">
-  <div class="win-title">TRANSLATED!</div>
-  <div class="win-protein" id="winProtein">Protein: Met-Leu (Myosin)</div>
-  <div class="win-stats">
-    <div class="win-stat-item"><span class="win-stat-val" id="winTime">0.00s</span><span class="win-stat-lbl">Time</span></div>
-    <div class="win-stat-item"><span class="win-stat-val" id="winScore">0</span><span class="win-stat-lbl">Score</span></div>
-    <div class="win-stat-item"><span class="win-stat-val" id="winHp">3</span><span class="win-stat-lbl">HP Left</span></div>
+  <div class="win-title">PROTEIN MADE! 🎉</div>
+  <div class="win-protein" id="winProteinName">ATP Synthase — Amino Acid Chain:</div>
+  <div class="win-chain" id="winChain"></div>
+  <div class="win-summary">
+    <div class="ws-item"><span class="ws-val" id="wsTime">0s</span><span class="ws-lbl">Time</span></div>
+    <div class="ws-item"><span class="ws-val" id="wsScore">0</span><span class="ws-lbl">Score</span></div>
+    <div class="ws-item"><span class="ws-val" id="wsHp">3</span><span class="ws-lbl">HP left</span></div>
   </div>
-  <button class="start-btn" id="winBtn" style="margin-top:0;">▶ PLAY AGAIN</button>
+  <div class="win-glossary">
+    <h4>What you just simulated</h4>
+    <div class="gl-grid">
+      <div class="gl-item"><b>DNA</b> — master blueprint in nucleus</div>
+      <div class="gl-item"><b>RNA Polymerase</b> — enzyme that transcribes DNA</div>
+      <div class="gl-item"><b>mRNA</b> — messenger carrying the code</div>
+      <div class="gl-item"><b>Codon</b> — 3-base unit on mRNA (e.g. AUG)</div>
+      <div class="gl-item"><b>Ribosome</b> — translation machine in cytoplasm</div>
+      <div class="gl-item"><b>tRNA</b> — delivers amino acids to ribosome</div>
+      <div class="gl-item"><b>Anticodon</b> — tRNA end that pairs with codon</div>
+      <div class="gl-item"><b>Amino acid chain</b> — the final protein!</div>
+    </div>
+  </div>
+  <button class="start-btn" id="winBtn">▶ Play Again</button>
 </div>
-
+ 
 <!-- DEAD SCREEN -->
 <div id="deadScreen" class="screen hidden">
-  <div class="dead-title">DEGRADED!</div>
-  <div class="dead-sub">The RNase got you.</div>
-  <button class="retry-btn" id="retryBtn">↺ TRY AGAIN</button>
+  <div class="dead-title">mRNA DEGRADED!</div>
+  <div class="dead-sub">A nuclease destroyed your strand.</div>
+  <button class="retry-btn" id="retryBtn">↺ Try Again</button>
 </div>
-
+ 
 <script>
-// ══════════════════════════════════════════════════
-//  SETUP
-// ══════════════════════════════════════════════════
-const gc   = document.getElementById('gameCanvas');
+// ═══════════════════════════════════════════════════════
+//  CANVAS SETUP
+// ═══════════════════════════════════════════════════════
+const gc   = document.getElementById('gc');
 const gctx = gc.getContext('2d');
-const sc   = document.getElementById('speedCanvas');
-const sctx = sc.getContext('2d');
-const pc   = document.getElementById('particleCanvas');
+const pc   = document.getElementById('pc');
 const pctx = pc.getContext('2d');
-
 let W, H;
-function resize() {
-  W = gc.width = sc.width = pc.width = window.innerWidth;
-  H = gc.height = sc.height = pc.height = window.innerHeight;
+ 
+function resize(){
+  W = gc.width = pc.width = window.innerWidth;
+  H = gc.height = pc.height = window.innerHeight;
+  if(splinePts) buildAll();
 }
 resize();
-window.addEventListener('resize', () => { resize(); buildTrack(); });
-
-// ══════════════════════════════════════════════════
-//  TRACK DEFINITION (percentage-based waypoints)
-// ══════════════════════════════════════════════════
-const TRACK_WIDTH = 90; // px
-
-function buildTrack() {
-  // Waypoints as % of W/H — forms a closed loop
-  const raw = [
-    [0.15, 0.15],
-    [0.50, 0.10],
-    [0.85, 0.15],
-    [0.90, 0.45],
-    [0.75, 0.70],
-    [0.55, 0.85],
-    [0.35, 0.80],
-    [0.15, 0.70],
-    [0.10, 0.45],
-  ];
-  return raw.map(([px, py]) => ({ x: px * W, y: py * H }));
+window.addEventListener('resize', resize);
+ 
+// ═══════════════════════════════════════════════════════
+//  BIOLOGY DATA
+// ═══════════════════════════════════════════════════════
+// Phase 1: Transcription (nucleus) — DNA nucleotides A T G C → mRNA uses A U G C
+// The player collects DNA template nucleotides, RNA polymerase "converts" them to mRNA
+const TRANSCRIPTION_SEQ = ['A','T','G','C','A','T']; // DNA bases
+const MRNA_SEQ          = ['U','A','C','G','U','A']; // complementary mRNA (A→U, T→A, G→C, C→G)
+ 
+// Phase 2: Translation (cytoplasm)
+// mRNA codons (groups of 3): UAC | GUA — tRNA anticodons are complementary
+const TRANSLATION_SEQ   = ['U','A','C','G','U','A']; // read from mRNA
+const TRNA_ANTICODONS   = ['A','U','G','C','A','U']; // tRNA anticodon complements
+const AMINO_ACIDS       = ['Tyr','Val'];              // each codon → one amino acid
+const PROTEIN_NAME      = 'ATP Synthase subunit';
+ 
+// Pickup info cards
+const INFO = {
+  A_dna:  { icon:'🔵', title:'Adenine (DNA)', body:'A DNA nucleotide. On the template strand, Adenine pairs with Thymine (T). RNA Polymerase reads it and adds the complementary U to the mRNA.' },
+  T_dna:  { icon:'🟡', title:'Thymine (DNA)', body:'Thymine only exists in DNA, never in RNA. When RNA Polymerase reads T on the DNA template, it places an Adenine (A) on the growing mRNA strand.' },
+  G_dna:  { icon:'🟣', title:'Guanine (DNA)', body:'A purine base in DNA. Guanine on the template pairs with Cytosine (C) in the new mRNA strand during Transcription.' },
+  C_dna:  { icon:'🩵', title:'Cytosine (DNA)', body:'A pyrimidine base in DNA. RNA Polymerase reads Cytosine and places Guanine (G) on the mRNA strand.' },
+  U_rna:  { icon:'🩷', title:'Uracil (mRNA Codon)', body:'Uracil replaces Thymine in RNA. Three mRNA bases together form a CODON — the three-letter code that specifies one amino acid.' },
+  G_rna:  { icon:'🟣', title:'Guanine (mRNA Codon)', body:'Part of the mRNA codon sequence. The ribosome reads codons in groups of 3. Each codon calls a specific tRNA with a matching anticodon.' },
+  C_rna:  { icon:'🩵', title:'Cytosine (mRNA Codon)', body:'A codon base on the mRNA. When the ribosome reads this, tRNA anticodon UAG pairs with it to deliver an amino acid.' },
+  tRNA:   { icon:'🚗', title:'tRNA + Anticodon', body:'Transfer RNA (tRNA) carries an amino acid on one end and an anticodon on the other. The anticodon is complementary to the mRNA codon — this is how the right amino acid gets added.' },
+  AA:     { icon:'⛓️', title:'Amino Acid Added!', body:'Each time a tRNA anticodon matches the codon, its amino acid is added to the growing chain. The chain of amino acids = the PROTEIN!' },
+};
+ 
+const NT_COLORS = { A:'#69ff47', T:'#ffb74d', G:'#b06aff', C:'#4fc3f7', U:'#ff4fa3' };
+ 
+// ═══════════════════════════════════════════════════════
+//  TRACK BUILDING
+// ═══════════════════════════════════════════════════════
+const TW = 88; // track width px
+ 
+function rawWaypoints(){
+  return [
+    [.13,.18],[.38,.10],[.65,.10],[.87,.18],
+    [.90,.45],[.82,.72],[.60,.85],[.38,.85],
+    [.15,.72],[.10,.45],
+  ].map(([px,py])=>({x:px*W,y:py*H}));
 }
-
-// ══════════════════════════════════════════════════
-//  CATMULL-ROM SPLINE
-// ══════════════════════════════════════════════════
-function catmullRom(p0, p1, p2, p3, t) {
-  const t2 = t*t, t3 = t2*t;
+ 
+function catmullRom(p0,p1,p2,p3,t){
+  const t2=t*t,t3=t2*t;
   return {
-    x: 0.5*(2*p1.x + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
-    y: 0.5*(2*p1.y + (-p0.y+p2.y)*t + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
+    x:.5*(2*p1.x+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+    y:.5*(2*p1.y+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
   };
 }
-
-function buildSplinePoints(pts, steps = 12) {
-  const n = pts.length;
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const p0 = pts[(i-1+n)%n], p1 = pts[i], p2 = pts[(i+1)%n], p3 = pts[(i+2)%n];
-    for (let t = 0; t < 1; t += 1/steps) out.push(catmullRom(p0,p1,p2,p3,t));
+ 
+function buildSpline(pts,steps=18){
+  const n=pts.length,out=[];
+  for(let i=0;i<n;i++){
+    const p0=pts[(i-1+n)%n],p1=pts[i],p2=pts[(i+1)%n],p3=pts[(i+2)%n];
+    for(let t=0;t<1;t+=1/steps) out.push(catmullRom(p0,p1,p2,p3,t));
   }
   return out;
 }
-
-// ══════════════════════════════════════════════════
+ 
+let waypoints, splinePts;
+function buildAll(){ waypoints=rawWaypoints(); splinePts=buildSpline(waypoints,18); }
+buildAll();
+ 
+// ═══════════════════════════════════════════════════════
 //  GAME STATE
-// ══════════════════════════════════════════════════
-const SEQUENCE = ['A','U','G','C','A','U'];
-const PROTEIN_NAME = 'Met-His-Lys (ATP Synthase)';
-
-const NT_COLORS = { A:'#00ffaa', U:'#ff3fa4', G:'#b06aff', C:'#00cfff' };
-
-let state = 'start'; // start | countdown | playing | win | dead
-let trackPts, splinePts;
-let player, obstacles, pickups, particles;
-let keys = {};
-let gameTime, startTimestamp, score, hp, collected;
-let raceFinished = false;
-
-function initGame() {
-  trackPts  = buildTrack();
-  splinePts = buildSplinePoints(trackPts, 16);
-
-  const startPt = splinePts[0];
-  const nextPt  = splinePts[4];
-  const ang = Math.atan2(nextPt.y - startPt.y, nextPt.x - startPt.x);
-
-  player = {
-    x: startPt.x, y: startPt.y,
-    angle: ang,
-    speed: 0,
-    maxSpeed: 5.5,
-    accel: 0.18,
-    friction: 0.92,
-    turnSpeed: 0.045,
-    onTrack: true,
-    invincible: 0,
-    nearestSeg: 0,
+// ═══════════════════════════════════════════════════════
+let state='start';
+let player,pickups,obstacles,particles;
+let keys={};
+let score,hp,collected,phase; // phase: 'transcription'|'translation'
+let startTs,gameTime;
+let infoQueue=[], infoTimer=0;
+let aminoChain=[];
+ 
+function nearestSeg(px,py,hint=0){
+  const n=splinePts.length, range=Math.floor(n*.18);
+  let best=Infinity,bestI=hint;
+  for(let d=-range;d<=range;d++){
+    const i=((hint+d)%n+n)%n;
+    const dx=splinePts[i].x-px,dy=splinePts[i].y-py;
+    const d2=dx*dx+dy*dy;
+    if(d2<best){best=d2;bestI=i;}
+  }
+  return {idx:bestI,dist:Math.sqrt(best)};
+}
+ 
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+function initGame(){
+  buildAll();
+  score=0; hp=3; collected=0; phase='transcription';
+  startTs=null; gameTime=0; particles=[]; infoQueue=[]; infoTimer=0; aminoChain=[];
+ 
+  const sp=splinePts[0], sp2=splinePts[4]||splinePts[0];
+  player={
+    x:sp.x, y:sp.y,
+    angle:Math.atan2(sp2.y-sp.y,sp2.x-sp.x),
+    speed:0, maxSpeed:5.2, accel:.17, friction:.91,
+    turn:.044, invincible:0, seg:0,
   };
-
-  score = 0;
-  hp = 3;
-  collected = 0;
-  gameTime = 0;
-  startTimestamp = null;
-  raceFinished = false;
-
+ 
   spawnPickups();
   spawnObstacles();
-  particles = [];
-
   updateHUD();
   buildSeqHUD();
+  document.getElementById('hudPhase').textContent='Nucleus — Transcription';
+  document.getElementById('hudPhase').className='hud-phase-name nucleus';
 }
-
-// Place pickups on spline at evenly distributed positions
-function spawnPickups() {
-  pickups = [];
-  const total = splinePts.length;
-  // Skip first 15% (start area) and space 6 pickups
-  for (let i = 0; i < SEQUENCE.length; i++) {
-    const idx = Math.floor(total * 0.18 + (total * 0.75 / SEQUENCE.length) * i) % total;
-    const pt = splinePts[idx];
-    pickups.push({
-      x: pt.x, y: pt.y,
-      type: SEQUENCE[i], index: i,
-      collected: false,
-      pulse: Math.random() * Math.PI * 2,
-    });
+ 
+function currentSeq(){ return phase==='transcription' ? TRANSCRIPTION_SEQ : TRANSLATION_SEQ; }
+ 
+function spawnPickups(){
+  pickups=[];
+  const seq=currentSeq(), n=splinePts.length;
+  for(let i=0;i<seq.length;i++){
+    const idx=Math.floor(n*.18+(n*.72/seq.length)*i)%n;
+    const pt=splinePts[idx];
+    pickups.push({x:pt.x,y:pt.y,type:seq[i],index:i,collected:false,pulse:Math.random()*Math.PI*2});
   }
 }
-
-function spawnObstacles() {
-  obstacles = [];
-  const total = splinePts.length;
-  const obstacleCount = 8;
-  for (let i = 0; i < obstacleCount; i++) {
-    const idx = Math.floor(total * 0.05 + (total * 0.9 / obstacleCount) * i + total*0.12) % total;
-    const pt = splinePts[idx];
-    // Offset slightly off centre
-    const offset = (Math.random()-0.5) * TRACK_WIDTH * 0.5;
-    const perpIdx = (idx+1) % total;
-    const dx = splinePts[perpIdx].x - pt.x;
-    const dy = splinePts[perpIdx].y - pt.y;
-    const len = Math.hypot(dx,dy)||1;
+ 
+function spawnObstacles(){
+  obstacles=[];
+  const n=splinePts.length, count=7+Math.floor(Math.random()*3);
+  const labels = phase==='transcription'
+    ? ['Nuclease','Histone','Intron','Exon blocker']
+    : ['Protease','Splicing error','Ribosome jam','Stop codon!'];
+  for(let i=0;i<count;i++){
+    const idx=Math.floor(n*.08+(n*.84/count)*i+n*.1)%n;
+    const pt=splinePts[idx];
+    const perpI=(idx+1)%n;
+    const dx=splinePts[perpI].x-pt.x, dy=splinePts[perpI].y-pt.y;
+    const len=Math.hypot(dx,dy)||1;
+    const off=(Math.random()-.5)*TW*.45;
     obstacles.push({
-      x: pt.x + (-dy/len)*offset,
-      y: pt.y + (dx/len)*offset,
-      r: 16 + Math.random()*10,
-      type: Math.random()>0.5 ? 'RNase' : 'Intron',
-      orbitIdx: idx,
-      orbitPhase: Math.random()*Math.PI*2,
-      orbitRadius: 20 + Math.random()*25,
-      orbitSpeed: (0.4+Math.random()*0.6) * (Math.random()>0.5?1:-1),
+      x:pt.x+(-dy/len)*off, y:pt.y+(dx/len)*off,
+      r:14+Math.random()*10,
+      label:labels[Math.floor(Math.random()*labels.length)],
+      orbitI:idx, orbitPhase:Math.random()*Math.PI*2,
+      orbitR:18+Math.random()*22,
+      orbitSpeed:(.35+Math.random()*.5)*(Math.random()>.5?1:-1),
     });
   }
 }
-
-// ══════════════════════════════════════════════════
+ 
+// ═══════════════════════════════════════════════════════
 //  HUD
-// ══════════════════════════════════════════════════
-function buildSeqHUD() {
-  const el = document.getElementById('hudSeq');
-  el.innerHTML = SEQUENCE.map((nt, i) =>
-    `<div class="nt-chip nt-${nt}" id="chip-${i}">${nt}</div>`
+// ═══════════════════════════════════════════════════════
+function buildSeqHUD(){
+  const seq=currentSeq();
+  document.getElementById('hudSeq').innerHTML=seq.map((nt,i)=>
+    `<div class="nt ${nt}" id="chip${i}">${nt}</div>`
   ).join('');
 }
-
-function updateHUD() {
-  document.getElementById('hudSpeed').textContent = Math.round(Math.abs(player.speed)/player.maxSpeed*999)+' kbps';
-  document.getElementById('hudHp').textContent = '♥'.repeat(hp) + '♡'.repeat(3-hp);
-  for (let i = 0; i < SEQUENCE.length; i++) {
-    const chip = document.getElementById('chip-'+i);
-    if (!chip) continue;
-    chip.className = 'nt-chip nt-'+SEQUENCE[i];
-    if (i < collected)      chip.classList.add('done');
-    else if (i === collected) chip.classList.add('active');
+ 
+function updateHUD(){
+  document.getElementById('hudHp').textContent='♥'.repeat(hp)+'♡'.repeat(3-hp);
+  document.getElementById('hudScore').textContent=score;
+  const seq=currentSeq();
+  for(let i=0;i<seq.length;i++){
+    const c=document.getElementById('chip'+i);
+    if(!c) continue;
+    c.className='nt '+seq[i];
+    if(i<collected) c.classList.add('done');
+    else if(i===collected) c.classList.add('next');
   }
 }
-
-// ══════════════════════════════════════════════════
+ 
+// ═══════════════════════════════════════════════════════
+//  INFO BOX
+// ═══════════════════════════════════════════════════════
+function showInfo(key){
+  const d=INFO[key]||INFO['A_dna'];
+  document.getElementById('infoIcon').textContent=d.icon;
+  document.getElementById('infoTitle').textContent=d.title;
+  document.getElementById('infoBody').textContent=d.body;
+  const box=document.getElementById('infoBox');
+  box.classList.add('show');
+  clearTimeout(window._infoTO);
+  window._infoTO=setTimeout(()=>box.classList.remove('show'),3200);
+}
+ 
+// ═══════════════════════════════════════════════════════
 //  DRAWING
-// ══════════════════════════════════════════════════
-
-function drawTrack() {
-  const n = splinePts.length;
-
-  // Outer glow
+// ═══════════════════════════════════════════════════════
+function drawBg(){
+  const isNucleus = phase==='transcription';
+  gctx.fillStyle = isNucleus ? '#05101f' : '#04150d';
+  gctx.fillRect(0,0,W,H);
+ 
+  // grid
+  gctx.strokeStyle = isNucleus ? 'rgba(79,195,247,.07)' : 'rgba(105,255,71,.06)';
+  gctx.lineWidth=.5;
+  for(let x=0;x<W;x+=50){gctx.beginPath();gctx.moveTo(x,0);gctx.lineTo(x,H);gctx.stroke();}
+  for(let y=0;y<H;y+=50){gctx.beginPath();gctx.moveTo(0,y);gctx.lineTo(W,y);gctx.stroke();}
+ 
+  // ambient glow
+  const grad=gctx.createRadialGradient(W/2,H/2,H*.1,W/2,H/2,H*.6);
+  grad.addColorStop(0, isNucleus ? 'rgba(79,195,247,.06)' : 'rgba(105,255,71,.05)');
+  grad.addColorStop(1,'transparent');
+  gctx.fillStyle=grad; gctx.fillRect(0,0,W,H);
+ 
+  // location label watermark
   gctx.save();
-  gctx.shadowColor = '#1a2a5e';
-  gctx.shadowBlur = 30;
-  gctx.strokeStyle = '#0d1533';
-  gctx.lineWidth = TRACK_WIDTH + 24;
-  gctx.lineJoin = 'round'; gctx.lineCap = 'round';
+  gctx.globalAlpha=.06;
+  gctx.font=`900 ${Math.min(W*.12,90)}px Nunito,sans-serif`;
+  gctx.fillStyle=isNucleus?'#4fc3f7':'#69ff47';
+  gctx.textAlign='center';
+  gctx.fillText(isNucleus?'NUCLEUS':'CYTOPLASM',W/2,H/2+30);
+  gctx.restore();
+ 
+  // DNA helix decoration in nucleus
+  if(isNucleus) drawDNADecor();
+  else drawRibosomeDecor();
+}
+ 
+function drawDNADecor(){
+  gctx.save(); gctx.globalAlpha=.12;
+  const t=gameTime*.4;
+  gctx.strokeStyle='#4fc3f7'; gctx.lineWidth=1.5;
+  for(let side of [-1,1]){
+    gctx.beginPath();
+    for(let x=0;x<W;x+=3){
+      const y=H*.5+Math.sin(x*.025+t)*H*.06*side;
+      x===0?gctx.moveTo(x,y):gctx.lineTo(x,y);
+    }
+    gctx.stroke();
+  }
+  gctx.restore();
+}
+ 
+function drawRibosomeDecor(){
+  // show ribosome structure hint at finish
+  const fp=splinePts[0];
+  gctx.save();
+  gctx.globalAlpha=.18;
+  gctx.fillStyle='#69ff47';
+  gctx.beginPath();gctx.arc(fp.x,fp.y-TW*.7,22,0,Math.PI*2);gctx.fill();
+  gctx.beginPath();gctx.arc(fp.x,fp.y+TW*.55,16,0,Math.PI*2);gctx.fill();
+  gctx.globalAlpha=.3;
+  gctx.fillStyle='#fff';
+  gctx.font='8px Courier Prime,monospace'; gctx.textAlign='center';
+  gctx.fillText('Large',fp.x,fp.y-TW*.7+3);
+  gctx.fillText('Small',fp.x,fp.y+TW*.55+3);
+  gctx.restore();
+}
+ 
+function drawTrack(){
+  const n=splinePts.length;
+  const isNucleus=phase==='transcription';
+ 
+  // shadow
+  gctx.save();
+  gctx.strokeStyle=isNucleus?'#0d1b3e':'#0a2e1a';
+  gctx.lineWidth=TW+28; gctx.lineJoin='round'; gctx.lineCap='round';
   gctx.beginPath();
-  gctx.moveTo(splinePts[0].x, splinePts[0].y);
-  for (let i = 1; i < n; i++) gctx.lineTo(splinePts[i].x, splinePts[i].y);
+  splinePts.forEach((p,i)=>i===0?gctx.moveTo(p.x,p.y):gctx.lineTo(p.x,p.y));
   gctx.closePath(); gctx.stroke();
   gctx.restore();
-
-  // Track fill
-  gctx.strokeStyle = '#0d1533';
-  gctx.lineWidth = TRACK_WIDTH;
-  gctx.lineJoin = 'round'; gctx.lineCap = 'round';
+ 
+  // fill
+  gctx.strokeStyle=isNucleus?'#0d1b3e':'#0a2e1a';
+  gctx.lineWidth=TW; gctx.lineJoin='round'; gctx.lineCap='round';
   gctx.beginPath();
-  gctx.moveTo(splinePts[0].x, splinePts[0].y);
-  for (let i = 1; i < n; i++) gctx.lineTo(splinePts[i].x, splinePts[i].y);
+  splinePts.forEach((p,i)=>i===0?gctx.moveTo(p.x,p.y):gctx.lineTo(p.x,p.y));
   gctx.closePath(); gctx.stroke();
-
-  // Edge lines (neon pink walls)
-  for (const side of [-1, 1]) {
-    gctx.strokeStyle = side === -1 ? 'rgba(255,63,164,0.7)' : 'rgba(0,207,255,0.5)';
-    gctx.lineWidth = 2.5;
-    gctx.shadowColor = side === -1 ? 'rgba(255,63,164,0.5)' : 'rgba(0,207,255,0.4)';
-    gctx.shadowBlur = 8;
-    gctx.setLineDash([12, 8]);
+ 
+  // edges
+  for(const side of [-1,1]){
+    gctx.save();
+    gctx.strokeStyle=side===-1
+      ?(isNucleus?'rgba(79,195,247,.65)':'rgba(105,255,71,.55)')
+      :(isNucleus?'rgba(255,183,77,.4)':'rgba(255,79,163,.35)');
+    gctx.lineWidth=2; gctx.setLineDash([14,10]);
+    gctx.shadowColor=gctx.strokeStyle; gctx.shadowBlur=8;
     gctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const cur = splinePts[i], nxt = splinePts[(i+1)%n];
-      const dx = nxt.x - cur.x, dy = nxt.y - cur.y;
-      const len = Math.hypot(dx,dy)||1;
-      const ox = (-dy/len) * (TRACK_WIDTH/2) * side;
-      const oy = (dx/len)  * (TRACK_WIDTH/2) * side;
-      i===0 ? gctx.moveTo(cur.x+ox, cur.y+oy) : gctx.lineTo(cur.x+ox, cur.y+oy);
+    for(let i=0;i<n;i++){
+      const cur=splinePts[i],nxt=splinePts[(i+1)%n];
+      const dx=nxt.x-cur.x,dy=nxt.y-cur.y,len=Math.hypot(dx,dy)||1;
+      const ox=(-dy/len)*(TW/2)*side, oy=(dx/len)*(TW/2)*side;
+      i===0?gctx.moveTo(cur.x+ox,cur.y+oy):gctx.lineTo(cur.x+ox,cur.y+oy);
     }
     gctx.closePath(); gctx.stroke();
-    gctx.setLineDash([]);
-    gctx.shadowBlur = 0;
+    gctx.setLineDash([]); gctx.restore();
   }
-
-  // Centre dashes
-  gctx.strokeStyle = 'rgba(255,255,255,0.08)';
-  gctx.lineWidth = 1; gctx.setLineDash([16, 20]);
+ 
+  // centre dash
+  gctx.strokeStyle='rgba(255,255,255,.06)'; gctx.lineWidth=1; gctx.setLineDash([18,22]);
   gctx.beginPath();
-  gctx.moveTo(splinePts[0].x, splinePts[0].y);
-  for (let i = 1; i < n; i++) gctx.lineTo(splinePts[i].x, splinePts[i].y);
-  gctx.closePath(); gctx.stroke();
-  gctx.setLineDash([]);
-
-  // Finish line
-  drawFinishLine();
-}
-
-function drawFinishLine() {
-  const p1 = splinePts[0], p2 = splinePts[1]||splinePts[0];
-  const dx = p2.x-p1.x, dy = p2.y-p1.y;
-  const len = Math.hypot(dx,dy)||1;
-  const ox = -dy/len * (TRACK_WIDTH/2+4), oy = dx/len * (TRACK_WIDTH/2+4);
+  splinePts.forEach((p,i)=>i===0?gctx.moveTo(p.x,p.y):gctx.lineTo(p.x,p.y));
+  gctx.closePath(); gctx.stroke(); gctx.setLineDash([]);
+ 
+  // FINISH LINE — labelled RIBOSOME (translation) or NUCLEAR PORE (transcription)
+  const fp=splinePts[0], fp2=splinePts[1]||fp;
+  const fdx=fp2.x-fp.x, fdy=fp2.y-fp.y, flen=Math.hypot(fdx,fdy)||1;
+  const fox=(-fdy/flen)*(TW/2+6), foy=(fdx/flen)*(TW/2+6);
   gctx.save();
-  gctx.strokeStyle = 'rgba(0,255,170,0.9)';
-  gctx.lineWidth = 4;
-  gctx.shadowColor = 'rgba(0,255,170,0.8)'; gctx.shadowBlur = 14;
-  gctx.beginPath();
-  gctx.moveTo(p1.x+ox, p1.y+oy);
-  gctx.lineTo(p1.x-ox, p1.y-oy);
-  gctx.stroke();
+  gctx.strokeStyle=isNucleus?'rgba(255,183,77,.9)':'rgba(105,255,71,.9)';
+  gctx.lineWidth=4; gctx.shadowColor=gctx.strokeStyle; gctx.shadowBlur=14;
+  gctx.beginPath(); gctx.moveTo(fp.x+fox,fp.y+foy); gctx.lineTo(fp.x-fox,fp.y-foy); gctx.stroke();
   gctx.restore();
-  gctx.fillStyle = 'rgba(0,255,170,0.8)';
-  gctx.font = 'bold 10px Orbitron, monospace';
-  gctx.textAlign = 'center';
-  gctx.fillText('RIBOSOME', p1.x, p1.y - TRACK_WIDTH/2 - 10);
+  gctx.fillStyle=isNucleus?'rgba(255,183,77,.85)':'rgba(105,255,71,.85)';
+  gctx.font='bold 10px Nunito,sans-serif'; gctx.textAlign='center';
+  const finishLabel=isNucleus?'NUCLEAR PORE → EXIT':'RIBOSOME FINISH';
+  gctx.fillText(finishLabel,fp.x,fp.y-TW/2-12);
 }
-
-function drawBackground() {
-  gctx.fillStyle = '#04060f';
-  gctx.fillRect(0,0,W,H);
-
-  // Subtle grid
-  gctx.strokeStyle = 'rgba(26,42,94,0.25)';
-  gctx.lineWidth = 0.5;
-  for (let x=0; x<W; x+=48) {
-    gctx.beginPath(); gctx.moveTo(x,0); gctx.lineTo(x,H); gctx.stroke();
-  }
-  for (let y=0; y<H; y+=48) {
-    gctx.beginPath(); gctx.moveTo(0,y); gctx.lineTo(W,y); gctx.stroke();
-  }
-
-  // Nucleus aura
-  const r = Math.min(W,H)*0.42;
-  const grad = gctx.createRadialGradient(W/2,H/2,r*0.3,W/2,H/2,r);
-  grad.addColorStop(0,'rgba(176,106,255,0.04)');
-  grad.addColorStop(1,'transparent');
-  gctx.fillStyle = grad;
-  gctx.fillRect(0,0,W,H);
-}
-
-function drawPickups(t) {
-  for (const pk of pickups) {
-    if (pk.collected) continue;
-    const py = pk.y + Math.sin(t*2 + pk.pulse)*6;
-    const c = NT_COLORS[pk.type];
-    const isNext = pk.index === collected;
-
+ 
+function drawPickups(){
+  const t=gameTime;
+  pickups.forEach(pk=>{
+    if(pk.collected) return;
+    const py=pk.y+Math.sin(t*2+pk.pulse)*6;
+    const c=NT_COLORS[pk.type]||'#fff';
+    const isNext=pk.index===collected;
+    const r=isNext?20:15;
+ 
     gctx.save();
-    gctx.shadowColor = c; gctx.shadowBlur = isNext ? 22 : 10;
-    gctx.beginPath(); gctx.arc(pk.x, py, isNext?18:14, 0, Math.PI*2);
-    gctx.fillStyle = isNext ? c+'33' : c+'18';
-    gctx.strokeStyle = c; gctx.lineWidth = isNext?2.5:1.5;
+    gctx.shadowColor=c; gctx.shadowBlur=isNext?24:10;
+    gctx.beginPath(); gctx.arc(pk.x,py,r,0,Math.PI*2);
+    gctx.fillStyle=isNext?c+'44':c+'22';
+    gctx.strokeStyle=c; gctx.lineWidth=isNext?2.5:1.5;
     gctx.fill(); gctx.stroke();
     gctx.restore();
-
-    gctx.fillStyle = isNext ? '#fff' : c;
-    gctx.font = `bold ${isNext?13:11}px Orbitron, monospace`;
+ 
+    gctx.fillStyle=isNext?'#fff':c;
+    gctx.font=`bold ${isNext?13:11}px Courier Prime,monospace`;
     gctx.textAlign='center'; gctx.textBaseline='middle';
-    gctx.fillText(pk.type, pk.x, py);
+    gctx.fillText(pk.type,pk.x,py);
     gctx.textBaseline='alphabetic';
-
-    if (isNext) {
-      // Pulse ring
-      const pr = 24 + Math.sin(t*3)*4;
-      gctx.beginPath(); gctx.arc(pk.x, py, pr, 0, Math.PI*2);
-      gctx.strokeStyle = c+'55'; gctx.lineWidth = 1;
-      gctx.stroke();
+ 
+    // label below
+    const lbl=phase==='transcription'?'DNA':'mRNA codon';
+    gctx.fillStyle=c+'99'; gctx.font='7px Nunito,sans-serif'; gctx.textAlign='center';
+    gctx.fillText(lbl,pk.x,py+r+10);
+ 
+    if(isNext){
+      // dashed guide line
+      gctx.save();
+      gctx.strokeStyle=c+'44'; gctx.lineWidth=1; gctx.setLineDash([5,7]);
+      gctx.beginPath(); gctx.moveTo(player.x,player.y); gctx.lineTo(pk.x,py); gctx.stroke();
+      gctx.setLineDash([]); gctx.restore();
+      // pulse ring
+      const pr=r+6+Math.sin(t*4)*4;
+      gctx.beginPath(); gctx.arc(pk.x,py,pr,0,Math.PI*2);
+      gctx.strokeStyle=c+'55'; gctx.lineWidth=1; gctx.stroke();
     }
-  }
+  });
 }
-
-function drawObstacles(t) {
-  for (const ob of obstacles) {
-    // Orbit around their anchor
-    const anchor = splinePts[ob.orbitIdx];
-    const phase = ob.orbitPhase + t * ob.orbitSpeed;
-    ob.x = anchor.x + Math.cos(phase)*ob.orbitRadius;
-    ob.y = anchor.y + Math.sin(phase)*ob.orbitRadius;
-
-    const isRNase = ob.type === 'RNase';
-    const c = isRNase ? '#ff3fa4' : '#b06aff';
-
+ 
+function drawObstacles(){
+  obstacles.forEach(ob=>{
+    const anchor=splinePts[ob.orbitI];
+    const ph=ob.orbitPhase+gameTime*ob.orbitSpeed;
+    ob.x=anchor.x+Math.cos(ph)*ob.orbitR;
+    ob.y=anchor.y+Math.sin(ph)*ob.orbitR;
+ 
+    const c='#ff4fa3';
     gctx.save();
-    gctx.shadowColor = c; gctx.shadowBlur = 14;
-    gctx.strokeStyle = c; gctx.lineWidth = 2;
-    gctx.fillStyle = isRNase ? 'rgba(255,63,164,0.15)' : 'rgba(176,106,255,0.15)';
-
-    if (isRNase) {
-      // Star shape
-      const spikes = 6, outerR = ob.r, innerR = ob.r*0.5;
-      gctx.beginPath();
-      for (let i = 0; i < spikes*2; i++) {
-        const r2 = i%2===0 ? outerR : innerR;
-        const a = (i*Math.PI/spikes) + t*0.8;
-        i===0 ? gctx.moveTo(ob.x+Math.cos(a)*r2, ob.y+Math.sin(a)*r2)
-               : gctx.lineTo(ob.x+Math.cos(a)*r2, ob.y+Math.sin(a)*r2);
-      }
-      gctx.closePath();
-    } else {
-      gctx.beginPath(); gctx.arc(ob.x, ob.y, ob.r, 0, Math.PI*2);
+    gctx.shadowColor=c; gctx.shadowBlur=12;
+    gctx.strokeStyle=c; gctx.lineWidth=2;
+    gctx.fillStyle='rgba(255,79,163,.15)';
+    // spiky obstacle
+    const spikes=7, outerR=ob.r, innerR=ob.r*.5;
+    gctx.beginPath();
+    for(let i=0;i<spikes*2;i++){
+      const r2=i%2===0?outerR:innerR;
+      const a=(i*Math.PI/spikes)+gameTime*.9;
+      i===0?gctx.moveTo(ob.x+Math.cos(a)*r2,ob.y+Math.sin(a)*r2)
+           :gctx.lineTo(ob.x+Math.cos(a)*r2,ob.y+Math.sin(a)*r2);
     }
-    gctx.fill(); gctx.stroke();
+    gctx.closePath(); gctx.fill(); gctx.stroke();
     gctx.restore();
-
-    gctx.fillStyle = c;
-    gctx.font = '7px Space Mono, monospace';
-    gctx.textAlign='center'; gctx.textBaseline='middle';
-    gctx.fillText(ob.type, ob.x, ob.y + ob.r + 10);
-    gctx.textBaseline='alphabetic';
-  }
+    gctx.fillStyle=c; gctx.font='7px Nunito,sans-serif'; gctx.textAlign='center';
+    gctx.fillText(ob.label,ob.x,ob.y+ob.r+10);
+  });
 }
-
-function drawPlayer() {
-  const { x, y, angle, invincible } = player;
-
-  if (invincible > 0 && Math.floor(Date.now()/80)%2===0) return; // blink
-
+ 
+function drawRNAPolymerase(){
+  // Draw RNA Polymerase icon near the player during transcription
+  if(phase!=='transcription') return;
+  const px=player.x-Math.cos(player.angle)*40;
+  const py=player.y-Math.sin(player.angle)*40;
   gctx.save();
-  gctx.translate(x, y);
-  gctx.rotate(angle + Math.PI/2);
-
-  // Body
-  gctx.shadowColor = '#00ffaa'; gctx.shadowBlur = 18;
-  gctx.fillStyle   = '#003d25';
-  gctx.strokeStyle = '#00ffaa'; gctx.lineWidth = 2;
-  // Futuristic car body
-  gctx.beginPath();
-  gctx.moveTo(0, -20);
-  gctx.lineTo(10, -10);
-  gctx.lineTo(12, 8);
-  gctx.lineTo(8, 18);
-  gctx.lineTo(-8, 18);
-  gctx.lineTo(-12, 8);
-  gctx.lineTo(-10, -10);
-  gctx.closePath();
-  gctx.fill(); gctx.stroke();
-
-  // Cockpit
-  gctx.fillStyle = '#00ffaa33';
-  gctx.strokeStyle = '#00ffaa99'; gctx.lineWidth = 1;
-  gctx.beginPath();
-  gctx.ellipse(0, -4, 6, 10, 0, 0, Math.PI*2);
-  gctx.fill(); gctx.stroke();
-
-  // Wheels
-  gctx.fillStyle   = '#00cfff';
-  gctx.strokeStyle = '#00cfff44'; gctx.lineWidth = 1;
-  for (const [wx,wy] of [[-12,-6],[12,-6],[-12,10],[12,10]]) {
-    gctx.beginPath(); gctx.ellipse(wx,wy,4,3,Math.PI/2,0,Math.PI*2);
-    gctx.fill(); gctx.stroke();
-  }
-
-  // Headlights
-  gctx.fillStyle = '#ffffaa'; gctx.shadowColor='#ffffaa'; gctx.shadowBlur=10;
-  gctx.beginPath(); gctx.arc(-7,-18,3,0,Math.PI*2); gctx.fill();
-  gctx.beginPath(); gctx.arc(7,-18,3,0,Math.PI*2); gctx.fill();
-
+  gctx.globalAlpha=.5+Math.sin(gameTime*3)*.15;
+  gctx.fillStyle='#ffb74d';
+  gctx.beginPath(); gctx.arc(px,py,10,0,Math.PI*2); gctx.fill();
+  gctx.fillStyle='#000'; gctx.font='bold 6px Nunito,sans-serif'; gctx.textAlign='center'; gctx.textBaseline='middle';
+  gctx.fillText('RNAP',px,py);
   gctx.restore();
-
-  // mRNA label
-  gctx.fillStyle = '#00ffaacc';
-  gctx.font = 'bold 8px Orbitron, monospace';
-  gctx.textAlign='center';
-  gctx.fillText('mRNA', x, y + 30);
 }
-
-// ══════════════════════════════════════════════════
-//  NEAREST POINT ON SPLINE (for on-track detection)
-// ══════════════════════════════════════════════════
-function nearestSplinePoint(px, py, hint=0) {
-  const n = splinePts.length;
-  let best = Infinity, bestIdx = hint;
-  // Search around hint ±15% for performance
-  const range = Math.floor(n*0.15);
-  for (let d = -range; d <= range; d++) {
-    const i = ((hint+d)%n+n)%n;
-    const dx = splinePts[i].x-px, dy = splinePts[i].y-py;
-    const dist = dx*dx+dy*dy;
-    if (dist < best) { best=dist; bestIdx=i; }
+ 
+function drawPlayer(){
+  const {x,y,angle,invincible}=player;
+  if(invincible>0 && Math.floor(Date.now()/80)%2===0) return;
+ 
+  gctx.save();
+  gctx.translate(x,y); gctx.rotate(angle+Math.PI/2);
+  gctx.shadowColor=phase==='transcription'?'#4fc3f7':'#69ff47';
+  gctx.shadowBlur=18;
+ 
+  // car body
+  gctx.fillStyle=phase==='transcription'?'#0d2744':'#0d2e17';
+  gctx.strokeStyle=phase==='transcription'?'#4fc3f7':'#69ff47';
+  gctx.lineWidth=2;
+  gctx.beginPath();
+  gctx.moveTo(0,-22);
+  gctx.lineTo(11,-10); gctx.lineTo(13,8); gctx.lineTo(8,20);
+  gctx.lineTo(-8,20); gctx.lineTo(-13,8); gctx.lineTo(-11,-10);
+  gctx.closePath(); gctx.fill(); gctx.stroke();
+ 
+  // cockpit
+  gctx.fillStyle=phase==='transcription'?'rgba(79,195,247,.3)':'rgba(105,255,71,.3)';
+  gctx.strokeStyle=phase==='transcription'?'#4fc3f7':'#69ff47'; gctx.lineWidth=1;
+  gctx.beginPath(); gctx.ellipse(0,-3,6,10,0,0,Math.PI*2); gctx.fill(); gctx.stroke();
+ 
+  // wheels
+  gctx.fillStyle=phase==='transcription'?'#4fc3f7':'#69ff47';
+  for(const[wx,wy] of [[-13,-5],[13,-5],[-13,11],[13,11]]){
+    gctx.beginPath(); gctx.ellipse(wx,wy,4,3,Math.PI/2,0,Math.PI*2); gctx.fill();
   }
-  return { idx: bestIdx, dist: Math.sqrt(best) };
+ 
+  // headlights
+  gctx.fillStyle='#ffffcc'; gctx.shadowColor='#ffffcc'; gctx.shadowBlur=10;
+  gctx.beginPath(); gctx.arc(-7,-20,2.5,0,Math.PI*2); gctx.fill();
+  gctx.beginPath(); gctx.arc(7,-20,2.5,0,Math.PI*2); gctx.fill();
+  gctx.restore();
+ 
+  // label
+  gctx.fillStyle=phase==='transcription'?'rgba(79,195,247,.8)':'rgba(105,255,71,.8)';
+  gctx.font='bold 8px Nunito,sans-serif'; gctx.textAlign='center';
+  gctx.fillText('mRNA',x,y+32);
 }
-
-// ══════════════════════════════════════════════════
-//  PHYSICS & LOGIC
-// ══════════════════════════════════════════════════
-function updatePlayer(dt) {
-  if (keys['ArrowLeft']  || keys['a'] || keys['A']) player.angle -= player.turnSpeed * Math.sign(player.speed||1);
-  if (keys['ArrowRight'] || keys['d'] || keys['D']) player.angle += player.turnSpeed * Math.sign(player.speed||1);
-  if (keys['ArrowUp']    || keys['w'] || keys['W']) player.speed += player.accel;
-  else if (keys['ArrowDown'] || keys['s'] || keys['S']) player.speed -= player.accel * 0.7;
-  else player.speed *= player.friction;
-
-  player.speed = Math.max(-player.maxSpeed*0.4, Math.min(player.maxSpeed, player.speed));
-
-  // On-track penalty
-  const { dist } = nearestSplinePoint(player.x, player.y, player.nearestSeg);
-  player.onTrack = dist < TRACK_WIDTH/2 - 4;
-  if (!player.onTrack) player.speed *= 0.85;
-
-  player.x += Math.cos(player.angle) * player.speed;
-  player.y += Math.sin(player.angle) * player.speed;
-  player.x = Math.max(0, Math.min(W, player.x));
-  player.y = Math.max(0, Math.min(H, player.y));
-
-  // Update nearest segment
-  const { idx } = nearestSplinePoint(player.x, player.y, player.nearestSeg);
-  player.nearestSeg = idx;
-
-  if (player.invincible > 0) player.invincible -= dt;
-}
-
-function checkPickups() {
-  for (const pk of pickups) {
-    if (pk.collected || pk.index !== collected) continue;
-    const py = pk.y; // we use the base y for collision (not animated)
-    if (Math.hypot(player.x - pk.x, player.y - py) < 28) {
-      pk.collected = true;
-      collected++;
-      score += 150;
-      spawnParticlesBurst(pk.x, pk.y, NT_COLORS[pk.type]);
-      updateHUD();
-    }
-  }
-}
-
-function checkObstacles() {
-  if (player.invincible > 0) return;
-  for (const ob of obstacles) {
-    if (Math.hypot(player.x-ob.x, player.y-ob.y) < ob.r + 14) {
-      hp--;
-      score = Math.max(0, score-50);
-      player.invincible = 1800;
-      player.speed *= -0.6;
-      flashDamage();
-      updateHUD();
-      if (hp <= 0) { triggerDead(); return; }
-    }
-  }
-}
-
-function checkFinish() {
-  if (collected < SEQUENCE.length) return;
-  if (raceFinished) return;
-  const p = splinePts[0];
-  if (Math.hypot(player.x-p.x, player.y-p.y) < 40) {
-    raceFinished = true;
-    triggerWin();
-  }
-}
-
-function flashDamage() {
-  const el = document.getElementById('damageFlash');
-  el.classList.add('active');
-  setTimeout(() => el.classList.remove('active'), 180);
-}
-
-// ══════════════════════════════════════════════════
-//  PARTICLES
-// ══════════════════════════════════════════════════
-function spawnParticlesBurst(x, y, color, n=20) {
-  for (let i=0;i<n;i++) {
-    const a = Math.random()*Math.PI*2;
-    const s = 2+Math.random()*5;
-    particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life:1, color, r: 3+Math.random()*4 });
-  }
-}
-
-function updateParticles(dt) {
-  for (const p of particles) {
-    p.x+=p.vx; p.y+=p.vy; p.vx*=0.93; p.vy*=0.93; p.life-=0.025;
-  }
-  particles = particles.filter(p=>p.life>0);
-}
-
-function drawParticles() {
+ 
+function drawParticles(){
   pctx.clearRect(0,0,W,H);
-  for (const p of particles) {
-    pctx.globalAlpha = p.life;
-    pctx.fillStyle = p.color;
-    pctx.beginPath(); pctx.arc(p.x, p.y, p.r*p.life, 0, Math.PI*2); pctx.fill();
-  }
-  pctx.globalAlpha = 1;
+  particles.forEach(p=>{
+    pctx.globalAlpha=p.life;
+    pctx.fillStyle=p.color;
+    pctx.beginPath(); pctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2); pctx.fill();
+  });
+  pctx.globalAlpha=1;
 }
-
-// ══════════════════════════════════════════════════
-//  SPEED LINES
-// ══════════════════════════════════════════════════
-function drawSpeedLines() {
-  const boost = Math.abs(player.speed) > player.maxSpeed*0.7;
-  sc.classList.toggle('boost', boost);
-  if (!boost) return;
-  sctx.clearRect(0,0,W,H);
-  const cx=player.x, cy=player.y;
-  for (let i=0;i<20;i++) {
-    const a = Math.random()*Math.PI*2;
-    const r1 = 60+Math.random()*80, r2 = r1+15+Math.random()*40;
-    sctx.strokeStyle = 'rgba(0,255,170,0.12)';
-    sctx.lineWidth = 1;
-    sctx.beginPath();
-    sctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1);
-    sctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2);
-    sctx.stroke();
+ 
+// ═══════════════════════════════════════════════════════
+//  PARTICLES
+// ═══════════════════════════════════════════════════════
+function burst(x,y,color,n=18){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, s=2+Math.random()*5;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color,r:3+Math.random()*4});
   }
 }
-
-// ══════════════════════════════════════════════════
+ 
+function updateParticles(){
+  particles=particles.filter(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vx*=.92; p.vy*=.92; p.life-=.022;
+    return p.life>0;
+  });
+}
+ 
+// ═══════════════════════════════════════════════════════
+//  PHYSICS
+// ═══════════════════════════════════════════════════════
+function updatePlayer(dt){
+  if(keys.ArrowLeft||keys.a||keys.A) player.angle-=player.turn*Math.sign(player.speed||1);
+  if(keys.ArrowRight||keys.d||keys.D) player.angle+=player.turn*Math.sign(player.speed||1);
+  if(keys.ArrowUp||keys.w||keys.W) player.speed+=player.accel;
+  else if(keys.ArrowDown||keys.s||keys.S) player.speed-=player.accel*.7;
+  else player.speed*=player.friction;
+ 
+  player.speed=Math.max(-player.maxSpeed*.4,Math.min(player.maxSpeed,player.speed));
+ 
+  const {dist}=nearestSeg(player.x,player.y,player.seg);
+  if(dist>TW/2-4) player.speed*=.82;
+ 
+  player.x+=Math.cos(player.angle)*player.speed;
+  player.y+=Math.sin(player.angle)*player.speed;
+  player.x=Math.max(0,Math.min(W,player.x));
+  player.y=Math.max(0,Math.min(H,player.y));
+ 
+  const{idx}=nearestSeg(player.x,player.y,player.seg);
+  player.seg=idx;
+  if(player.invincible>0) player.invincible-=dt;
+}
+ 
+function checkPickups(){
+  const seq=currentSeq();
+  pickups.forEach(pk=>{
+    if(pk.collected||pk.index!==collected) return;
+    if(Math.hypot(player.x-pk.x,player.y-pk.y)<30){
+      pk.collected=true;
+      score+=120;
+      burst(pk.x,pk.y,NT_COLORS[pk.type]||'#fff');
+ 
+      // show info card
+      let key;
+      if(phase==='transcription') key=pk.type+'_dna';
+      else key=pk.type+'_rna';
+      showInfo(key);
+ 
+      // tRNA + amino acid logic for translation
+      if(phase==='translation'){
+        const aaIdx=Math.floor(collected/3);
+        if(collected%3===2 && AMINO_ACIDS[aaIdx]){
+          showInfo('tRNA');
+          setTimeout(()=>showInfo('AA'),1200);
+          aminoChain.push(AMINO_ACIDS[aaIdx]);
+        }
+      }
+ 
+      collected++;
+      updateHUD();
+    }
+  });
+}
+ 
+function checkObstacles(){
+  if(player.invincible>0) return;
+  obstacles.forEach(ob=>{
+    if(Math.hypot(player.x-ob.x,player.y-ob.y)<ob.r+14){
+      hp--; score=Math.max(0,score-40);
+      player.invincible=1800; player.speed*=-.6;
+      const f=document.getElementById('dmgFlash');
+      f.classList.add('on'); setTimeout(()=>f.classList.remove('on'),180);
+      burst(player.x,player.y,'#ff4fa3',12);
+      updateHUD();
+      if(hp<=0){ state='dead'; triggerDead(); }
+    }
+  });
+}
+ 
+function checkFinish(){
+  if(collected<currentSeq().length) return;
+  const fp=splinePts[0];
+  if(Math.hypot(player.x-fp.x,player.y-fp.y)<48){
+    if(phase==='transcription'){
+      // move to translation
+      phase='translation'; collected=0; aminoChain=[];
+      spawnPickups(); spawnObstacles();
+      buildSeqHUD(); updateHUD();
+      showPhaseBanner();
+    } else {
+      triggerWin();
+    }
+  }
+}
+ 
+// ═══════════════════════════════════════════════════════
+//  PHASE BANNER
+// ═══════════════════════════════════════════════════════
+function showPhaseBanner(){
+  state='banner';
+  const b=document.getElementById('phaseBanner');
+  document.getElementById('pbLabel').textContent='Phase 1 complete — entering cytoplasm';
+  document.getElementById('pbTitle').textContent='Translation';
+  document.getElementById('pbTitle').className='pb-title r';
+  document.getElementById('pbDesc').textContent=
+    'Your mRNA strand has exited the nucleus through the nuclear pore and reached the RIBOSOME in the cytoplasm. Now tRNA molecules will match each codon with the correct amino acid to build the protein!';
+  b.classList.remove('hidden');
+  document.getElementById('hudPhase').textContent='Cytoplasm — Translation';
+  document.getElementById('hudPhase').className='hud-phase-name cytoplasm';
+  setTimeout(()=>{ b.classList.add('hidden'); state='playing'; }, 4200);
+}
+ 
+// ═══════════════════════════════════════════════════════
 //  WIN / DEAD
-// ══════════════════════════════════════════════════
-function triggerWin() {
-  state = 'win';
-  const elapsed = ((Date.now()-startTimestamp)/1000).toFixed(2);
-  const timeBonus = Math.max(0, Math.round((60 - parseFloat(elapsed))*10));
-  score += timeBonus + hp*100;
-
-  document.getElementById('winTime').textContent   = elapsed + 's';
-  document.getElementById('winScore').textContent  = score;
-  document.getElementById('winHp').textContent     = hp;
-  document.getElementById('winProtein').textContent= 'Protein: ' + PROTEIN_NAME;
-
+// ═══════════════════════════════════════════════════════
+function triggerWin(){
+  state='win';
+  const elapsed=((Date.now()-startTs)/1000).toFixed(1);
+  score+=hp*100+200;
+  document.getElementById('wsTime').textContent=elapsed+'s';
+  document.getElementById('wsScore').textContent=score;
+  document.getElementById('wsHp').textContent=hp;
+  document.getElementById('winProteinName').textContent='Protein: '+PROTEIN_NAME+' — Amino Acid Chain:';
+  // show amino chain
+  const chain=aminoChain.length?aminoChain:['Met','Tyr','Val'];
+  document.getElementById('winChain').innerHTML=chain.map(aa=>`<div class="win-aa">${aa}</div>`).join('<div style="color:var(--amino-gold);align-self:center;font-size:1.2rem;">—</div>');
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('winScreen').classList.remove('hidden');
-
-  // Celebration particles
-  const shoot = () => {
-    for (let i=0;i<6;i++) {
-      spawnParticlesBurst(
-        Math.random()*W, Math.random()*H,
-        ['#00ffaa','#00cfff','#ffc43d','#b06aff','#ff3fa4'][Math.floor(Math.random()*5)],
-        8
-      );
-    }
-  };
-  shoot();
-  const iv = setInterval(shoot, 300);
-  setTimeout(()=>clearInterval(iv), 4000);
+  // celebration
+  const iv=setInterval(()=>{
+    burst(Math.random()*W,Math.random()*H,['#69ff47','#4fc3f7','#ffd54f','#b06aff','#ff4fa3'][Math.floor(Math.random()*5)],10);
+  },250);
+  setTimeout(()=>clearInterval(iv),5000);
 }
-
-function triggerDead() {
-  state = 'dead';
+ 
+function triggerDead(){
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('deadScreen').classList.remove('hidden');
 }
-
-// ══════════════════════════════════════════════════
+ 
+// ═══════════════════════════════════════════════════════
 //  GAME LOOP
-// ══════════════════════════════════════════════════
-let lastTs = 0;
-
-function loop(ts) {
-  const dt = ts - lastTs;
-  lastTs = ts;
-
-  if (state === 'playing') {
-    if (!startTimestamp) startTimestamp = ts;
-    gameTime = (ts - startTimestamp)/1000;
-
-    updatePlayer(dt);
-    checkPickups();
-    checkObstacles();
-    checkFinish();
-    updateParticles(dt);
-
-    drawBackground();
-    drawTrack();
-    drawPickups(gameTime);
-    drawObstacles(gameTime);
-    drawPlayer();
-    drawSpeedLines();
-    drawParticles();
-
-  } else if (state === 'win' || state === 'dead') {
-    updateParticles(dt);
-    drawBackground();
-    drawTrack();
-    drawParticles();
-
+// ═══════════════════════════════════════════════════════
+let lastTs=0;
+function loop(ts){
+  const dt=ts-lastTs; lastTs=ts;
+ 
+  if(state==='playing'||state==='banner'){
+    if(!startTs) startTs=ts;
+    gameTime=(ts-startTs)/1000;
+    if(state==='playing'){
+      updatePlayer(dt);
+      checkPickups();
+      checkObstacles();
+      checkFinish();
+    }
+    updateParticles();
+    drawBg(); drawTrack(); drawPickups(); drawObstacles();
+    drawRNAPolymerase(); drawPlayer(); drawParticles();
+  } else if(state==='win'||state==='dead'){
+    updateParticles();
+    drawBg(); drawTrack(); drawParticles();
   } else {
-    drawBackground();
-    if (trackPts) drawTrack();
+    // idle / start
+    drawBg(); if(splinePts) drawTrack();
   }
-
   requestAnimationFrame(loop);
 }
-
-// ══════════════════════════════════════════════════
+ 
+// ═══════════════════════════════════════════════════════
 //  COUNTDOWN
-// ══════════════════════════════════════════════════
-function startCountdown(cb) {
-  const cdEl = document.getElementById('countdown');
-  const cdNum = document.getElementById('cdNum');
-  cdEl.classList.remove('hidden');
-  let n = 3;
-  cdNum.textContent = n;
-
-  const tick = () => {
+// ═══════════════════════════════════════════════════════
+function countdown(cb){
+  const el=document.getElementById('countdown');
+  const num=document.getElementById('cdNum');
+  el.classList.remove('hidden');
+  let n=3;
+  num.textContent=n; num.style.color='';
+  const tick=()=>{
     n--;
-    if (n <= 0) {
-      cdNum.textContent = 'GO!';
-      cdNum.style.color = '#ffc43d';
-      setTimeout(() => { cdEl.classList.add('hidden'); cdNum.style.color=''; cb(); }, 700);
+    if(n<=0){
+      num.textContent='GO!'; num.style.color='#ffb74d';
+      setTimeout(()=>{ el.classList.add('hidden'); cb(); },700);
     } else {
-      cdNum.textContent = n;
-      // Re-trigger animation
-      cdNum.style.animation='none';
-      cdNum.offsetHeight;
-      cdNum.style.animation='';
-      setTimeout(tick, 900);
+      num.textContent=n;
+      num.style.animation='none'; num.offsetHeight; num.style.animation='';
+      setTimeout(tick,900);
     }
   };
-  setTimeout(tick, 900);
+  setTimeout(tick,900);
 }
-
-// ══════════════════════════════════════════════════
+ 
+// ═══════════════════════════════════════════════════════
 //  INPUT
-// ══════════════════════════════════════════════════
-document.addEventListener('keydown', e => { keys[e.key]=true; e.preventDefault(); });
-document.addEventListener('keyup',   e => { keys[e.key]=false; });
-
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{ keys[e.key]=true; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault(); });
+document.addEventListener('keyup',e=>{ keys[e.key]=false; });
+ 
+// ═══════════════════════════════════════════════════════
 //  BUTTON WIRING
-// ══════════════════════════════════════════════════
-function beginGame() {
+// ═══════════════════════════════════════════════════════
+function startGame(){
   document.getElementById('startScreen').classList.add('hidden');
   document.getElementById('deadScreen').classList.add('hidden');
   document.getElementById('winScreen').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
-
   initGame();
-  state = 'countdown';
-  startCountdown(() => { state = 'playing'; });
+  state='countdown';
+  countdown(()=>{ state='playing'; });
 }
-
-document.getElementById('startBtn').addEventListener('click',  beginGame);
-document.getElementById('winBtn').addEventListener('click',    beginGame);
-document.getElementById('retryBtn').addEventListener('click',  beginGame);
-
-// ══════════════════════════════════════════════════
+ 
+document.getElementById('startBtn').addEventListener('click',startGame);
+document.getElementById('winBtn').addEventListener('click',startGame);
+document.getElementById('retryBtn').addEventListener('click',startGame);
+ 
+// ═══════════════════════════════════════════════════════
 //  BOOT
-// ══════════════════════════════════════════════════
-trackPts  = buildTrack();
-splinePts = buildSplinePoints(trackPts, 16);
-
+// ═══════════════════════════════════════════════════════
 requestAnimationFrame(loop);
 </script>
 </body>
+</html>
