@@ -1,0 +1,1075 @@
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>mRNA Kart — Escape the Nucleus</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root {
+    --neon-green:  #00ffaa;
+    --neon-blue:   #00cfff;
+    --neon-pink:   #ff3fa4;
+    --neon-purple: #b06aff;
+    --neon-amber:  #ffc43d;
+    --bg-deep:     #04060f;
+    --bg-mid:      #080d1e;
+    --track-fill:  #0d1533;
+    --track-edge:  #1a2a5e;
+    --wall-color:  #ff3fa4;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg-deep);
+    font-family: 'Orbitron', monospace;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  /* ── SCREENS ── */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.6s ease;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  /* ── START SCREEN ── */
+  #startScreen {
+    background: radial-gradient(ellipse 80% 70% at 50% 50%, #0d1533 0%, #04060f 100%);
+    z-index: 20;
+  }
+
+  .title-wrapper { position: relative; text-align: center; margin-bottom: 2rem; }
+
+  .title-main {
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    color: var(--neon-green);
+    text-shadow: 0 0 20px rgba(0,255,170,0.8), 0 0 60px rgba(0,255,170,0.4);
+    animation: titlePulse 2.5s ease-in-out infinite;
+  }
+  .title-sub {
+    font-size: clamp(0.8rem, 2vw, 1.15rem);
+    color: var(--neon-blue);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+    text-shadow: 0 0 10px rgba(0,207,255,0.7);
+    font-family: 'Space Mono', monospace;
+  }
+
+  @keyframes titlePulse {
+    0%,100% { text-shadow: 0 0 20px rgba(0,255,170,0.8), 0 0 60px rgba(0,255,170,0.4); }
+    50%      { text-shadow: 0 0 40px rgba(0,255,170,1),   0 0 100px rgba(0,255,170,0.6); }
+  }
+
+  .dna-decor {
+    position: absolute;
+    font-size: 1rem;
+    color: var(--neon-purple);
+    opacity: 0.35;
+    font-family: 'Space Mono', monospace;
+    animation: floatUp 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes floatUp {
+    0%,100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+    50%      { transform: translateY(-18px) rotate(8deg); opacity: 0.6; }
+  }
+
+  .start-btn {
+    position: relative;
+    background: transparent;
+    border: 2px solid var(--neon-green);
+    color: var(--neon-green);
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    padding: 1rem 3.5rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 18px rgba(0,255,170,0.4), inset 0 0 18px rgba(0,255,170,0.05);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 1rem;
+  }
+  .start-btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--neon-green);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .start-btn:hover::before { opacity: 0.12; }
+  .start-btn:hover {
+    box-shadow: 0 0 36px rgba(0,255,170,0.7), inset 0 0 30px rgba(0,255,170,0.1);
+    transform: scale(1.04);
+  }
+  .start-btn:active { transform: scale(0.98); }
+
+  .controls-hint {
+    margin-top: 2.5rem;
+    color: rgba(255,255,255,0.35);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-align: center;
+    line-height: 1.9;
+  }
+  .controls-hint span { color: var(--neon-blue); }
+
+  /* ── HUD ── */
+  #hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    pointer-events: none;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(4,6,15,0.85) 0%, transparent 100%);
+  }
+  #hud.hidden { display: none; }
+
+  .hud-block {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .hud-label {
+    font-size: 0.55rem; letter-spacing: 0.25em;
+    color: rgba(255,255,255,0.35); font-family: 'Space Mono', monospace;
+  }
+  .hud-value {
+    font-size: 1.2rem; font-weight: 700;
+    color: var(--neon-green);
+    text-shadow: 0 0 10px rgba(0,255,170,0.6);
+    font-family: 'Orbitron', monospace;
+    min-width: 80px;
+  }
+
+  .hud-seq {
+    display: flex; gap: 5px; align-items: center;
+  }
+  .nt-chip {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 700; font-family: 'Orbitron', monospace;
+    border: 1.5px solid;
+    transition: all 0.3s;
+  }
+  .nt-chip.done   { opacity: 0.3; }
+  .nt-chip.active { transform: scale(1.3); box-shadow: 0 0 14px currentColor; }
+
+  .nt-A { color: #00ffaa; border-color: #00ffaa; background: rgba(0,255,170,0.1); }
+  .nt-U { color: #ff3fa4; border-color: #ff3fa4; background: rgba(255,63,164,0.1); }
+  .nt-G { color: #b06aff; border-color: #b06aff; background: rgba(176,106,255,0.1); }
+  .nt-C { color: #00cfff; border-color: #00cfff; background: rgba(0,207,255,0.1); }
+
+  /* ── COUNTDOWN ── */
+  #countdown {
+    position: absolute; inset: 0; z-index: 15;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #countdown.hidden { display: none; }
+  #cdNum {
+    font-size: 12rem; font-weight: 900;
+    color: var(--neon-green);
+    text-shadow: 0 0 60px rgba(0,255,170,0.9);
+    animation: cdPop 0.9s ease-out;
+    font-family: 'Orbitron', monospace;
+  }
+  @keyframes cdPop {
+    0%   { transform: scale(2.5); opacity: 0; }
+    40%  { transform: scale(0.9); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── WIN SCREEN ── */
+  #winScreen {
+    background: radial-gradient(ellipse 80% 70% at 50% 50%, #051a10 0%, #04060f 100%);
+    z-index: 20;
+    gap: 0;
+  }
+  #winScreen.hidden { opacity: 0; pointer-events: none; }
+
+  .win-title {
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    font-weight: 900;
+    color: var(--neon-green);
+    text-shadow: 0 0 30px rgba(0,255,170,0.9);
+    letter-spacing: 0.15em;
+    animation: winGlow 1.5s ease-in-out infinite;
+    margin-bottom: 0.4rem;
+  }
+  @keyframes winGlow {
+    0%,100% { text-shadow: 0 0 30px rgba(0,255,170,0.9); }
+    50%      { text-shadow: 0 0 70px rgba(0,255,170,1), 0 0 120px rgba(0,255,170,0.5); }
+  }
+  .win-protein {
+    font-family: 'Space Mono', monospace;
+    color: var(--neon-blue);
+    font-size: clamp(0.75rem, 1.8vw, 1rem);
+    letter-spacing: 0.2em;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 0 10px rgba(0,207,255,0.7);
+  }
+  .win-stats {
+    display: flex; gap: 2.5rem; margin-bottom: 2rem;
+    font-family: 'Space Mono', monospace;
+  }
+  .win-stat-item { text-align: center; }
+  .win-stat-val  { font-size: 2rem; font-weight: 700; color: var(--neon-amber); display: block; text-shadow: 0 0 14px rgba(255,196,61,0.7); }
+  .win-stat-lbl  { font-size: 0.6rem; color: rgba(255,255,255,0.4); letter-spacing: 0.2em; text-transform: uppercase; }
+
+  .particle-canvas {
+    position: absolute; inset: 0; pointer-events: none; z-index: 19;
+  }
+
+  /* ── DEAD SCREEN ── */
+  #deadScreen {
+    background: radial-gradient(ellipse 80% 70% at 50% 50%, #1a0510 0%, #04060f 100%);
+    z-index: 20;
+  }
+  .dead-title {
+    font-size: clamp(2rem, 6vw, 4rem);
+    font-weight: 900;
+    color: var(--neon-pink);
+    text-shadow: 0 0 30px rgba(255,63,164,0.9);
+    letter-spacing: 0.12em;
+    margin-bottom: 0.5rem;
+    animation: shake 0.4s ease;
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-12px); }
+    40%      { transform: translateX(12px); }
+    60%      { transform: translateX(-8px); }
+    80%      { transform: translateX(8px); }
+  }
+  .dead-sub {
+    font-family: 'Space Mono', monospace;
+    color: rgba(255,255,255,0.5);
+    font-size: 0.9rem;
+    letter-spacing: 0.2em;
+    margin-bottom: 2rem;
+  }
+
+  .retry-btn {
+    background: transparent;
+    border: 2px solid var(--neon-pink);
+    color: var(--neon-pink);
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem; font-weight: 700;
+    letter-spacing: 0.25em;
+    padding: 0.9rem 3rem;
+    cursor: pointer;
+    border-radius: 4px;
+    box-shadow: 0 0 18px rgba(255,63,164,0.4);
+    transition: all 0.2s;
+  }
+  .retry-btn:hover {
+    box-shadow: 0 0 36px rgba(255,63,164,0.7);
+    transform: scale(1.05);
+  }
+
+  /* ── DAMAGE FLASH ── */
+  #damageFlash {
+    position: absolute; inset: 0; z-index: 12;
+    background: rgba(255,63,164,0.3);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  #damageFlash.active { opacity: 1; }
+
+  /* ── SPEED LINES ── */
+  #speedCanvas {
+    position: absolute; inset: 0; pointer-events: none; z-index: 8;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #speedCanvas.boost { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- GAME CANVAS -->
+<canvas id="gameCanvas"></canvas>
+<canvas id="speedCanvas"></canvas>
+<canvas id="particleCanvas" class="particle-canvas"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hud-block">
+    <div class="hud-label">SPEED</div>
+    <div class="hud-value" id="hudSpeed">0 kbps</div>
+  </div>
+  <div class="hud-block" style="align-items:center;">
+    <div class="hud-label" style="text-align:center;">COLLECT IN ORDER</div>
+    <div class="hud-seq" id="hudSeq"></div>
+  </div>
+  <div class="hud-block" style="align-items:flex-end;">
+    <div class="hud-label">HEALTH</div>
+    <div class="hud-value" id="hudHp">♥♥♥</div>
+  </div>
+</div>
+
+<!-- COUNTDOWN -->
+<div id="countdown" class="hidden">
+  <div id="cdNum">3</div>
+</div>
+
+<!-- DAMAGE FLASH -->
+<div id="damageFlash"></div>
+
+<!-- START SCREEN -->
+<div id="startScreen" class="screen">
+  <div class="dna-decor" style="left:8%;top:15%;animation-delay:0s;">A—T<br>G—C<br>T—A</div>
+  <div class="dna-decor" style="right:9%;top:20%;animation-delay:1.5s;">U—A<br>C—G<br>A—U</div>
+  <div class="dna-decor" style="left:5%;bottom:20%;animation-delay:3s;font-size:0.75rem;">RNase<br>⚠</div>
+  <div class="dna-decor" style="right:6%;bottom:18%;animation-delay:2s;font-size:0.75rem;">⚠<br>Intron</div>
+
+  <div class="title-wrapper">
+    <div class="title-main">mRNA KART</div>
+    <div class="title-sub">Escape the Nucleus</div>
+  </div>
+
+  <button class="start-btn" id="startBtn">▶ START RACE</button>
+
+  <div class="controls-hint">
+    <span>↑ ↓ ← →</span> or <span>W A S D</span> &nbsp;—&nbsp; Drive<br>
+    Follow the track · Collect nucleotides in order · Reach the Ribosome
+  </div>
+</div>
+
+<!-- WIN SCREEN -->
+<div id="winScreen" class="screen hidden">
+  <div class="win-title">TRANSLATED!</div>
+  <div class="win-protein" id="winProtein">Protein: Met-Leu (Myosin)</div>
+  <div class="win-stats">
+    <div class="win-stat-item"><span class="win-stat-val" id="winTime">0.00s</span><span class="win-stat-lbl">Time</span></div>
+    <div class="win-stat-item"><span class="win-stat-val" id="winScore">0</span><span class="win-stat-lbl">Score</span></div>
+    <div class="win-stat-item"><span class="win-stat-val" id="winHp">3</span><span class="win-stat-lbl">HP Left</span></div>
+  </div>
+  <button class="start-btn" id="winBtn" style="margin-top:0;">▶ PLAY AGAIN</button>
+</div>
+
+<!-- DEAD SCREEN -->
+<div id="deadScreen" class="screen hidden">
+  <div class="dead-title">DEGRADED!</div>
+  <div class="dead-sub">The RNase got you.</div>
+  <button class="retry-btn" id="retryBtn">↺ TRY AGAIN</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  SETUP
+// ══════════════════════════════════════════════════
+const gc   = document.getElementById('gameCanvas');
+const gctx = gc.getContext('2d');
+const sc   = document.getElementById('speedCanvas');
+const sctx = sc.getContext('2d');
+const pc   = document.getElementById('particleCanvas');
+const pctx = pc.getContext('2d');
+
+let W, H;
+function resize() {
+  W = gc.width = sc.width = pc.width = window.innerWidth;
+  H = gc.height = sc.height = pc.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); buildTrack(); });
+
+// ══════════════════════════════════════════════════
+//  TRACK DEFINITION (percentage-based waypoints)
+// ══════════════════════════════════════════════════
+const TRACK_WIDTH = 90; // px
+
+function buildTrack() {
+  // Waypoints as % of W/H — forms a closed loop
+  const raw = [
+    [0.15, 0.15],
+    [0.50, 0.10],
+    [0.85, 0.15],
+    [0.90, 0.45],
+    [0.75, 0.70],
+    [0.55, 0.85],
+    [0.35, 0.80],
+    [0.15, 0.70],
+    [0.10, 0.45],
+  ];
+  return raw.map(([px, py]) => ({ x: px * W, y: py * H }));
+}
+
+// ══════════════════════════════════════════════════
+//  CATMULL-ROM SPLINE
+// ══════════════════════════════════════════════════
+function catmullRom(p0, p1, p2, p3, t) {
+  const t2 = t*t, t3 = t2*t;
+  return {
+    x: 0.5*(2*p1.x + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+    y: 0.5*(2*p1.y + (-p0.y+p2.y)*t + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
+  };
+}
+
+function buildSplinePoints(pts, steps = 12) {
+  const n = pts.length;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i-1+n)%n], p1 = pts[i], p2 = pts[(i+1)%n], p3 = pts[(i+2)%n];
+    for (let t = 0; t < 1; t += 1/steps) out.push(catmullRom(p0,p1,p2,p3,t));
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════
+//  GAME STATE
+// ══════════════════════════════════════════════════
+const SEQUENCE = ['A','U','G','C','A','U'];
+const PROTEIN_NAME = 'Met-His-Lys (ATP Synthase)';
+
+const NT_COLORS = { A:'#00ffaa', U:'#ff3fa4', G:'#b06aff', C:'#00cfff' };
+
+let state = 'start'; // start | countdown | playing | win | dead
+let trackPts, splinePts;
+let player, obstacles, pickups, particles;
+let keys = {};
+let gameTime, startTimestamp, score, hp, collected;
+let raceFinished = false;
+
+function initGame() {
+  trackPts  = buildTrack();
+  splinePts = buildSplinePoints(trackPts, 16);
+
+  const startPt = splinePts[0];
+  const nextPt  = splinePts[4];
+  const ang = Math.atan2(nextPt.y - startPt.y, nextPt.x - startPt.x);
+
+  player = {
+    x: startPt.x, y: startPt.y,
+    angle: ang,
+    speed: 0,
+    maxSpeed: 5.5,
+    accel: 0.18,
+    friction: 0.92,
+    turnSpeed: 0.045,
+    onTrack: true,
+    invincible: 0,
+    nearestSeg: 0,
+  };
+
+  score = 0;
+  hp = 3;
+  collected = 0;
+  gameTime = 0;
+  startTimestamp = null;
+  raceFinished = false;
+
+  spawnPickups();
+  spawnObstacles();
+  particles = [];
+
+  updateHUD();
+  buildSeqHUD();
+}
+
+// Place pickups on spline at evenly distributed positions
+function spawnPickups() {
+  pickups = [];
+  const total = splinePts.length;
+  // Skip first 15% (start area) and space 6 pickups
+  for (let i = 0; i < SEQUENCE.length; i++) {
+    const idx = Math.floor(total * 0.18 + (total * 0.75 / SEQUENCE.length) * i) % total;
+    const pt = splinePts[idx];
+    pickups.push({
+      x: pt.x, y: pt.y,
+      type: SEQUENCE[i], index: i,
+      collected: false,
+      pulse: Math.random() * Math.PI * 2,
+    });
+  }
+}
+
+function spawnObstacles() {
+  obstacles = [];
+  const total = splinePts.length;
+  const obstacleCount = 8;
+  for (let i = 0; i < obstacleCount; i++) {
+    const idx = Math.floor(total * 0.05 + (total * 0.9 / obstacleCount) * i + total*0.12) % total;
+    const pt = splinePts[idx];
+    // Offset slightly off centre
+    const offset = (Math.random()-0.5) * TRACK_WIDTH * 0.5;
+    const perpIdx = (idx+1) % total;
+    const dx = splinePts[perpIdx].x - pt.x;
+    const dy = splinePts[perpIdx].y - pt.y;
+    const len = Math.hypot(dx,dy)||1;
+    obstacles.push({
+      x: pt.x + (-dy/len)*offset,
+      y: pt.y + (dx/len)*offset,
+      r: 16 + Math.random()*10,
+      type: Math.random()>0.5 ? 'RNase' : 'Intron',
+      orbitIdx: idx,
+      orbitPhase: Math.random()*Math.PI*2,
+      orbitRadius: 20 + Math.random()*25,
+      orbitSpeed: (0.4+Math.random()*0.6) * (Math.random()>0.5?1:-1),
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  HUD
+// ══════════════════════════════════════════════════
+function buildSeqHUD() {
+  const el = document.getElementById('hudSeq');
+  el.innerHTML = SEQUENCE.map((nt, i) =>
+    `<div class="nt-chip nt-${nt}" id="chip-${i}">${nt}</div>`
+  ).join('');
+}
+
+function updateHUD() {
+  document.getElementById('hudSpeed').textContent = Math.round(Math.abs(player.speed)/player.maxSpeed*999)+' kbps';
+  document.getElementById('hudHp').textContent = '♥'.repeat(hp) + '♡'.repeat(3-hp);
+  for (let i = 0; i < SEQUENCE.length; i++) {
+    const chip = document.getElementById('chip-'+i);
+    if (!chip) continue;
+    chip.className = 'nt-chip nt-'+SEQUENCE[i];
+    if (i < collected)      chip.classList.add('done');
+    else if (i === collected) chip.classList.add('active');
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  DRAWING
+// ══════════════════════════════════════════════════
+
+function drawTrack() {
+  const n = splinePts.length;
+
+  // Outer glow
+  gctx.save();
+  gctx.shadowColor = '#1a2a5e';
+  gctx.shadowBlur = 30;
+  gctx.strokeStyle = '#0d1533';
+  gctx.lineWidth = TRACK_WIDTH + 24;
+  gctx.lineJoin = 'round'; gctx.lineCap = 'round';
+  gctx.beginPath();
+  gctx.moveTo(splinePts[0].x, splinePts[0].y);
+  for (let i = 1; i < n; i++) gctx.lineTo(splinePts[i].x, splinePts[i].y);
+  gctx.closePath(); gctx.stroke();
+  gctx.restore();
+
+  // Track fill
+  gctx.strokeStyle = '#0d1533';
+  gctx.lineWidth = TRACK_WIDTH;
+  gctx.lineJoin = 'round'; gctx.lineCap = 'round';
+  gctx.beginPath();
+  gctx.moveTo(splinePts[0].x, splinePts[0].y);
+  for (let i = 1; i < n; i++) gctx.lineTo(splinePts[i].x, splinePts[i].y);
+  gctx.closePath(); gctx.stroke();
+
+  // Edge lines (neon pink walls)
+  for (const side of [-1, 1]) {
+    gctx.strokeStyle = side === -1 ? 'rgba(255,63,164,0.7)' : 'rgba(0,207,255,0.5)';
+    gctx.lineWidth = 2.5;
+    gctx.shadowColor = side === -1 ? 'rgba(255,63,164,0.5)' : 'rgba(0,207,255,0.4)';
+    gctx.shadowBlur = 8;
+    gctx.setLineDash([12, 8]);
+    gctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const cur = splinePts[i], nxt = splinePts[(i+1)%n];
+      const dx = nxt.x - cur.x, dy = nxt.y - cur.y;
+      const len = Math.hypot(dx,dy)||1;
+      const ox = (-dy/len) * (TRACK_WIDTH/2) * side;
+      const oy = (dx/len)  * (TRACK_WIDTH/2) * side;
+      i===0 ? gctx.moveTo(cur.x+ox, cur.y+oy) : gctx.lineTo(cur.x+ox, cur.y+oy);
+    }
+    gctx.closePath(); gctx.stroke();
+    gctx.setLineDash([]);
+    gctx.shadowBlur = 0;
+  }
+
+  // Centre dashes
+  gctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  gctx.lineWidth = 1; gctx.setLineDash([16, 20]);
+  gctx.beginPath();
+  gctx.moveTo(splinePts[0].x, splinePts[0].y);
+  for (let i = 1; i < n; i++) gctx.lineTo(splinePts[i].x, splinePts[i].y);
+  gctx.closePath(); gctx.stroke();
+  gctx.setLineDash([]);
+
+  // Finish line
+  drawFinishLine();
+}
+
+function drawFinishLine() {
+  const p1 = splinePts[0], p2 = splinePts[1]||splinePts[0];
+  const dx = p2.x-p1.x, dy = p2.y-p1.y;
+  const len = Math.hypot(dx,dy)||1;
+  const ox = -dy/len * (TRACK_WIDTH/2+4), oy = dx/len * (TRACK_WIDTH/2+4);
+  gctx.save();
+  gctx.strokeStyle = 'rgba(0,255,170,0.9)';
+  gctx.lineWidth = 4;
+  gctx.shadowColor = 'rgba(0,255,170,0.8)'; gctx.shadowBlur = 14;
+  gctx.beginPath();
+  gctx.moveTo(p1.x+ox, p1.y+oy);
+  gctx.lineTo(p1.x-ox, p1.y-oy);
+  gctx.stroke();
+  gctx.restore();
+  gctx.fillStyle = 'rgba(0,255,170,0.8)';
+  gctx.font = 'bold 10px Orbitron, monospace';
+  gctx.textAlign = 'center';
+  gctx.fillText('RIBOSOME', p1.x, p1.y - TRACK_WIDTH/2 - 10);
+}
+
+function drawBackground() {
+  gctx.fillStyle = '#04060f';
+  gctx.fillRect(0,0,W,H);
+
+  // Subtle grid
+  gctx.strokeStyle = 'rgba(26,42,94,0.25)';
+  gctx.lineWidth = 0.5;
+  for (let x=0; x<W; x+=48) {
+    gctx.beginPath(); gctx.moveTo(x,0); gctx.lineTo(x,H); gctx.stroke();
+  }
+  for (let y=0; y<H; y+=48) {
+    gctx.beginPath(); gctx.moveTo(0,y); gctx.lineTo(W,y); gctx.stroke();
+  }
+
+  // Nucleus aura
+  const r = Math.min(W,H)*0.42;
+  const grad = gctx.createRadialGradient(W/2,H/2,r*0.3,W/2,H/2,r);
+  grad.addColorStop(0,'rgba(176,106,255,0.04)');
+  grad.addColorStop(1,'transparent');
+  gctx.fillStyle = grad;
+  gctx.fillRect(0,0,W,H);
+}
+
+function drawPickups(t) {
+  for (const pk of pickups) {
+    if (pk.collected) continue;
+    const py = pk.y + Math.sin(t*2 + pk.pulse)*6;
+    const c = NT_COLORS[pk.type];
+    const isNext = pk.index === collected;
+
+    gctx.save();
+    gctx.shadowColor = c; gctx.shadowBlur = isNext ? 22 : 10;
+    gctx.beginPath(); gctx.arc(pk.x, py, isNext?18:14, 0, Math.PI*2);
+    gctx.fillStyle = isNext ? c+'33' : c+'18';
+    gctx.strokeStyle = c; gctx.lineWidth = isNext?2.5:1.5;
+    gctx.fill(); gctx.stroke();
+    gctx.restore();
+
+    gctx.fillStyle = isNext ? '#fff' : c;
+    gctx.font = `bold ${isNext?13:11}px Orbitron, monospace`;
+    gctx.textAlign='center'; gctx.textBaseline='middle';
+    gctx.fillText(pk.type, pk.x, py);
+    gctx.textBaseline='alphabetic';
+
+    if (isNext) {
+      // Pulse ring
+      const pr = 24 + Math.sin(t*3)*4;
+      gctx.beginPath(); gctx.arc(pk.x, py, pr, 0, Math.PI*2);
+      gctx.strokeStyle = c+'55'; gctx.lineWidth = 1;
+      gctx.stroke();
+    }
+  }
+}
+
+function drawObstacles(t) {
+  for (const ob of obstacles) {
+    // Orbit around their anchor
+    const anchor = splinePts[ob.orbitIdx];
+    const phase = ob.orbitPhase + t * ob.orbitSpeed;
+    ob.x = anchor.x + Math.cos(phase)*ob.orbitRadius;
+    ob.y = anchor.y + Math.sin(phase)*ob.orbitRadius;
+
+    const isRNase = ob.type === 'RNase';
+    const c = isRNase ? '#ff3fa4' : '#b06aff';
+
+    gctx.save();
+    gctx.shadowColor = c; gctx.shadowBlur = 14;
+    gctx.strokeStyle = c; gctx.lineWidth = 2;
+    gctx.fillStyle = isRNase ? 'rgba(255,63,164,0.15)' : 'rgba(176,106,255,0.15)';
+
+    if (isRNase) {
+      // Star shape
+      const spikes = 6, outerR = ob.r, innerR = ob.r*0.5;
+      gctx.beginPath();
+      for (let i = 0; i < spikes*2; i++) {
+        const r2 = i%2===0 ? outerR : innerR;
+        const a = (i*Math.PI/spikes) + t*0.8;
+        i===0 ? gctx.moveTo(ob.x+Math.cos(a)*r2, ob.y+Math.sin(a)*r2)
+               : gctx.lineTo(ob.x+Math.cos(a)*r2, ob.y+Math.sin(a)*r2);
+      }
+      gctx.closePath();
+    } else {
+      gctx.beginPath(); gctx.arc(ob.x, ob.y, ob.r, 0, Math.PI*2);
+    }
+    gctx.fill(); gctx.stroke();
+    gctx.restore();
+
+    gctx.fillStyle = c;
+    gctx.font = '7px Space Mono, monospace';
+    gctx.textAlign='center'; gctx.textBaseline='middle';
+    gctx.fillText(ob.type, ob.x, ob.y + ob.r + 10);
+    gctx.textBaseline='alphabetic';
+  }
+}
+
+function drawPlayer() {
+  const { x, y, angle, invincible } = player;
+
+  if (invincible > 0 && Math.floor(Date.now()/80)%2===0) return; // blink
+
+  gctx.save();
+  gctx.translate(x, y);
+  gctx.rotate(angle + Math.PI/2);
+
+  // Body
+  gctx.shadowColor = '#00ffaa'; gctx.shadowBlur = 18;
+  gctx.fillStyle   = '#003d25';
+  gctx.strokeStyle = '#00ffaa'; gctx.lineWidth = 2;
+  // Futuristic car body
+  gctx.beginPath();
+  gctx.moveTo(0, -20);
+  gctx.lineTo(10, -10);
+  gctx.lineTo(12, 8);
+  gctx.lineTo(8, 18);
+  gctx.lineTo(-8, 18);
+  gctx.lineTo(-12, 8);
+  gctx.lineTo(-10, -10);
+  gctx.closePath();
+  gctx.fill(); gctx.stroke();
+
+  // Cockpit
+  gctx.fillStyle = '#00ffaa33';
+  gctx.strokeStyle = '#00ffaa99'; gctx.lineWidth = 1;
+  gctx.beginPath();
+  gctx.ellipse(0, -4, 6, 10, 0, 0, Math.PI*2);
+  gctx.fill(); gctx.stroke();
+
+  // Wheels
+  gctx.fillStyle   = '#00cfff';
+  gctx.strokeStyle = '#00cfff44'; gctx.lineWidth = 1;
+  for (const [wx,wy] of [[-12,-6],[12,-6],[-12,10],[12,10]]) {
+    gctx.beginPath(); gctx.ellipse(wx,wy,4,3,Math.PI/2,0,Math.PI*2);
+    gctx.fill(); gctx.stroke();
+  }
+
+  // Headlights
+  gctx.fillStyle = '#ffffaa'; gctx.shadowColor='#ffffaa'; gctx.shadowBlur=10;
+  gctx.beginPath(); gctx.arc(-7,-18,3,0,Math.PI*2); gctx.fill();
+  gctx.beginPath(); gctx.arc(7,-18,3,0,Math.PI*2); gctx.fill();
+
+  gctx.restore();
+
+  // mRNA label
+  gctx.fillStyle = '#00ffaacc';
+  gctx.font = 'bold 8px Orbitron, monospace';
+  gctx.textAlign='center';
+  gctx.fillText('mRNA', x, y + 30);
+}
+
+// ══════════════════════════════════════════════════
+//  NEAREST POINT ON SPLINE (for on-track detection)
+// ══════════════════════════════════════════════════
+function nearestSplinePoint(px, py, hint=0) {
+  const n = splinePts.length;
+  let best = Infinity, bestIdx = hint;
+  // Search around hint ±15% for performance
+  const range = Math.floor(n*0.15);
+  for (let d = -range; d <= range; d++) {
+    const i = ((hint+d)%n+n)%n;
+    const dx = splinePts[i].x-px, dy = splinePts[i].y-py;
+    const dist = dx*dx+dy*dy;
+    if (dist < best) { best=dist; bestIdx=i; }
+  }
+  return { idx: bestIdx, dist: Math.sqrt(best) };
+}
+
+// ══════════════════════════════════════════════════
+//  PHYSICS & LOGIC
+// ══════════════════════════════════════════════════
+function updatePlayer(dt) {
+  if (keys['ArrowLeft']  || keys['a'] || keys['A']) player.angle -= player.turnSpeed * Math.sign(player.speed||1);
+  if (keys['ArrowRight'] || keys['d'] || keys['D']) player.angle += player.turnSpeed * Math.sign(player.speed||1);
+  if (keys['ArrowUp']    || keys['w'] || keys['W']) player.speed += player.accel;
+  else if (keys['ArrowDown'] || keys['s'] || keys['S']) player.speed -= player.accel * 0.7;
+  else player.speed *= player.friction;
+
+  player.speed = Math.max(-player.maxSpeed*0.4, Math.min(player.maxSpeed, player.speed));
+
+  // On-track penalty
+  const { dist } = nearestSplinePoint(player.x, player.y, player.nearestSeg);
+  player.onTrack = dist < TRACK_WIDTH/2 - 4;
+  if (!player.onTrack) player.speed *= 0.85;
+
+  player.x += Math.cos(player.angle) * player.speed;
+  player.y += Math.sin(player.angle) * player.speed;
+  player.x = Math.max(0, Math.min(W, player.x));
+  player.y = Math.max(0, Math.min(H, player.y));
+
+  // Update nearest segment
+  const { idx } = nearestSplinePoint(player.x, player.y, player.nearestSeg);
+  player.nearestSeg = idx;
+
+  if (player.invincible > 0) player.invincible -= dt;
+}
+
+function checkPickups() {
+  for (const pk of pickups) {
+    if (pk.collected || pk.index !== collected) continue;
+    const py = pk.y; // we use the base y for collision (not animated)
+    if (Math.hypot(player.x - pk.x, player.y - py) < 28) {
+      pk.collected = true;
+      collected++;
+      score += 150;
+      spawnParticlesBurst(pk.x, pk.y, NT_COLORS[pk.type]);
+      updateHUD();
+    }
+  }
+}
+
+function checkObstacles() {
+  if (player.invincible > 0) return;
+  for (const ob of obstacles) {
+    if (Math.hypot(player.x-ob.x, player.y-ob.y) < ob.r + 14) {
+      hp--;
+      score = Math.max(0, score-50);
+      player.invincible = 1800;
+      player.speed *= -0.6;
+      flashDamage();
+      updateHUD();
+      if (hp <= 0) { triggerDead(); return; }
+    }
+  }
+}
+
+function checkFinish() {
+  if (collected < SEQUENCE.length) return;
+  if (raceFinished) return;
+  const p = splinePts[0];
+  if (Math.hypot(player.x-p.x, player.y-p.y) < 40) {
+    raceFinished = true;
+    triggerWin();
+  }
+}
+
+function flashDamage() {
+  const el = document.getElementById('damageFlash');
+  el.classList.add('active');
+  setTimeout(() => el.classList.remove('active'), 180);
+}
+
+// ══════════════════════════════════════════════════
+//  PARTICLES
+// ══════════════════════════════════════════════════
+function spawnParticlesBurst(x, y, color, n=20) {
+  for (let i=0;i<n;i++) {
+    const a = Math.random()*Math.PI*2;
+    const s = 2+Math.random()*5;
+    particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life:1, color, r: 3+Math.random()*4 });
+  }
+}
+
+function updateParticles(dt) {
+  for (const p of particles) {
+    p.x+=p.vx; p.y+=p.vy; p.vx*=0.93; p.vy*=0.93; p.life-=0.025;
+  }
+  particles = particles.filter(p=>p.life>0);
+}
+
+function drawParticles() {
+  pctx.clearRect(0,0,W,H);
+  for (const p of particles) {
+    pctx.globalAlpha = p.life;
+    pctx.fillStyle = p.color;
+    pctx.beginPath(); pctx.arc(p.x, p.y, p.r*p.life, 0, Math.PI*2); pctx.fill();
+  }
+  pctx.globalAlpha = 1;
+}
+
+// ══════════════════════════════════════════════════
+//  SPEED LINES
+// ══════════════════════════════════════════════════
+function drawSpeedLines() {
+  const boost = Math.abs(player.speed) > player.maxSpeed*0.7;
+  sc.classList.toggle('boost', boost);
+  if (!boost) return;
+  sctx.clearRect(0,0,W,H);
+  const cx=player.x, cy=player.y;
+  for (let i=0;i<20;i++) {
+    const a = Math.random()*Math.PI*2;
+    const r1 = 60+Math.random()*80, r2 = r1+15+Math.random()*40;
+    sctx.strokeStyle = 'rgba(0,255,170,0.12)';
+    sctx.lineWidth = 1;
+    sctx.beginPath();
+    sctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1);
+    sctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2);
+    sctx.stroke();
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  WIN / DEAD
+// ══════════════════════════════════════════════════
+function triggerWin() {
+  state = 'win';
+  const elapsed = ((Date.now()-startTimestamp)/1000).toFixed(2);
+  const timeBonus = Math.max(0, Math.round((60 - parseFloat(elapsed))*10));
+  score += timeBonus + hp*100;
+
+  document.getElementById('winTime').textContent   = elapsed + 's';
+  document.getElementById('winScore').textContent  = score;
+  document.getElementById('winHp').textContent     = hp;
+  document.getElementById('winProtein').textContent= 'Protein: ' + PROTEIN_NAME;
+
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('winScreen').classList.remove('hidden');
+
+  // Celebration particles
+  const shoot = () => {
+    for (let i=0;i<6;i++) {
+      spawnParticlesBurst(
+        Math.random()*W, Math.random()*H,
+        ['#00ffaa','#00cfff','#ffc43d','#b06aff','#ff3fa4'][Math.floor(Math.random()*5)],
+        8
+      );
+    }
+  };
+  shoot();
+  const iv = setInterval(shoot, 300);
+  setTimeout(()=>clearInterval(iv), 4000);
+}
+
+function triggerDead() {
+  state = 'dead';
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('deadScreen').classList.remove('hidden');
+}
+
+// ══════════════════════════════════════════════════
+//  GAME LOOP
+// ══════════════════════════════════════════════════
+let lastTs = 0;
+
+function loop(ts) {
+  const dt = ts - lastTs;
+  lastTs = ts;
+
+  if (state === 'playing') {
+    if (!startTimestamp) startTimestamp = ts;
+    gameTime = (ts - startTimestamp)/1000;
+
+    updatePlayer(dt);
+    checkPickups();
+    checkObstacles();
+    checkFinish();
+    updateParticles(dt);
+
+    drawBackground();
+    drawTrack();
+    drawPickups(gameTime);
+    drawObstacles(gameTime);
+    drawPlayer();
+    drawSpeedLines();
+    drawParticles();
+
+  } else if (state === 'win' || state === 'dead') {
+    updateParticles(dt);
+    drawBackground();
+    drawTrack();
+    drawParticles();
+
+  } else {
+    drawBackground();
+    if (trackPts) drawTrack();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// ══════════════════════════════════════════════════
+//  COUNTDOWN
+// ══════════════════════════════════════════════════
+function startCountdown(cb) {
+  const cdEl = document.getElementById('countdown');
+  const cdNum = document.getElementById('cdNum');
+  cdEl.classList.remove('hidden');
+  let n = 3;
+  cdNum.textContent = n;
+
+  const tick = () => {
+    n--;
+    if (n <= 0) {
+      cdNum.textContent = 'GO!';
+      cdNum.style.color = '#ffc43d';
+      setTimeout(() => { cdEl.classList.add('hidden'); cdNum.style.color=''; cb(); }, 700);
+    } else {
+      cdNum.textContent = n;
+      // Re-trigger animation
+      cdNum.style.animation='none';
+      cdNum.offsetHeight;
+      cdNum.style.animation='';
+      setTimeout(tick, 900);
+    }
+  };
+  setTimeout(tick, 900);
+}
+
+// ══════════════════════════════════════════════════
+//  INPUT
+// ══════════════════════════════════════════════════
+document.addEventListener('keydown', e => { keys[e.key]=true; e.preventDefault(); });
+document.addEventListener('keyup',   e => { keys[e.key]=false; });
+
+// ══════════════════════════════════════════════════
+//  BUTTON WIRING
+// ══════════════════════════════════════════════════
+function beginGame() {
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('deadScreen').classList.add('hidden');
+  document.getElementById('winScreen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+
+  initGame();
+  state = 'countdown';
+  startCountdown(() => { state = 'playing'; });
+}
+
+document.getElementById('startBtn').addEventListener('click',  beginGame);
+document.getElementById('winBtn').addEventListener('click',    beginGame);
+document.getElementById('retryBtn').addEventListener('click',  beginGame);
+
+// ══════════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════════
+trackPts  = buildTrack();
+splinePts = buildSplinePoints(trackPts, 16);
+
+requestAnimationFrame(loop);
+</script>
+</body>
