@@ -232,7 +232,7 @@ canvas {
       <strong class="g">Level 2 — Translation (Cytoplasm):</strong> Become the <strong class="g">Ribosome</strong>.<br>
       Match <strong class="g">tRNA Anticodons</strong> to mRNA Codons to grow the Amino Acid Chain.
     </div>
-    <div style="color:rgba(100,160,200,0.5);font-size:11px;letter-spacing:1px;">Arrow Keys or W A S D to drive</div>
+    <div style="color:rgba(100,160,200,0.5);font-size:11px;letter-spacing:1px;">Arrow Keys or W A S D to move in any direction</div>
     <button class="btn" id="startBtn">INITIATE TRANSCRIPTION</button>
   </div>
  
@@ -265,6 +265,7 @@ const ctx    = canvas.getContext('2d');
 function resize() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
+  if (gameState === 'playing' || gameState === 'transition') clampPlayerToViewport();
 }
 resize();
 window.addEventListener('resize', resize);
@@ -297,7 +298,7 @@ let aminoChain= [];
 const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space'].includes(e.code)) e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
  
@@ -308,7 +309,7 @@ const player = {
   flashTimer:0,
   label:'', color:'',
   W:38, H:19,
-  MAX_SPEED:4.4, ACCEL:0.24, FRICTION:0.86, TURN:0.038,
+  MAX_SPEED:6.2, ACCEL:0.2, FRICTION:0.78, TURN:0.038,
 };
  
 function resetPlayer(lv) {
@@ -323,6 +324,14 @@ function resetPlayer(lv) {
   player.flashTimer = 0;
   player.label = lv === 1 ? 'RNA POLYMERASE' : 'RIBOSOME';
   player.color = lv === 1 ? '#00c8ff' : '#00ff88';
+}
+
+function clampPlayerToViewport() {
+  const pad = 26;
+  const W = canvas.width;
+  const H = canvas.height;
+  player.x = Math.min(Math.max(player.x, pad), W - pad);
+  player.y = Math.min(Math.max(player.y, pad), H - pad);
 }
  
 // ─── Nucleotides (Level 1) ────────────────────────────────────────────────────
@@ -891,27 +900,52 @@ function handleInput(dt) {
   const right = keys['ArrowRight'] || keys['KeyD'];
   const up    = keys['ArrowUp']    || keys['KeyW'];
   const down  = keys['ArrowDown']  || keys['KeyS'];
- 
-  if (left)  player.angle -= player.TURN * dt;
-  if (right) player.angle += player.TURN * dt;
- 
-  if (up)        player.speed = Math.min(player.speed + player.ACCEL * dt, player.MAX_SPEED);
-  else if (down) player.speed = Math.max(player.speed - player.ACCEL * dt, -player.MAX_SPEED * 0.45);
-  else           player.speed *= Math.pow(player.FRICTION, dt);
- 
-  if (Math.abs(player.speed) < 0.005) player.speed = 0;
- 
-  player.vx = Math.cos(player.angle) * player.speed;
-  player.vy = Math.sin(player.angle) * player.speed;
+
+  let moveX = 0;
+  let moveY = 0;
+  if (left) moveX -= 1;
+  if (right) moveX += 1;
+  if (up) moveY -= 1;
+  if (down) moveY += 1;
+
+  const moving = moveX !== 0 || moveY !== 0;
+  if (moving) {
+    const len = Math.hypot(moveX, moveY);
+    moveX /= len;
+    moveY /= len;
+
+    const targetVX = moveX * player.MAX_SPEED;
+    const targetVY = moveY * player.MAX_SPEED;
+    const steering = Math.min(player.ACCEL * dt, 1);
+
+    player.vx += (targetVX - player.vx) * steering;
+    player.vy += (targetVY - player.vy) * steering;
+    player.angle = Math.atan2(player.vy, player.vx);
+  } else {
+    const damping = Math.pow(player.FRICTION, dt);
+    player.vx *= damping;
+    player.vy *= damping;
+  }
+
+  if (Math.abs(player.vx) < 0.01) player.vx = 0;
+  if (Math.abs(player.vy) < 0.01) player.vy = 0;
+
+  player.speed = Math.hypot(player.vx, player.vy);
   player.x += player.vx * dt;
   player.y += player.vy * dt;
- 
+
+  if (!Number.isFinite(player.x) || !Number.isFinite(player.y)) {
+    resetPlayer(level);
+  }
+
   // soft boundary
   const W = canvas.width, H = canvas.height, pad = 22;
-  if (player.x < pad)   { player.x = pad;   player.speed *= -0.3; }
-  if (player.x > W-pad) { player.x = W-pad; player.speed *= -0.3; }
-  if (player.y < pad)   { player.y = pad;   player.speed *= -0.3; }
-  if (player.y > H-pad) { player.y = H-pad; player.speed *= -0.3; }
+  if (player.x < pad)   { player.x = pad;   player.vx = Math.abs(player.vx) * 0.2; }
+  if (player.x > W-pad) { player.x = W-pad; player.vx = -Math.abs(player.vx) * 0.2; }
+  if (player.y < pad)   { player.y = pad;   player.vy = Math.abs(player.vy) * 0.2; }
+  if (player.y > H-pad) { player.y = H-pad; player.vy = -Math.abs(player.vy) * 0.2; }
+
+  player.speed = Math.hypot(player.vx, player.vy);
  
   player.trail.push({ x: player.x, y: player.y });
   if (player.trail.length > 24) player.trail.shift();
@@ -1027,6 +1061,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
   spawnNucleotides();
  
   log('TRANSCRIPTION INITIATED. You are RNA Polymerase inside the Nucleus.', '');
+  log('Use Arrow Keys or W A S D to move directly. No turning required.', '');
   log('DNA Nucleotides are labelled on screen. Collect them in order!', '');
   log('Remember: DNA Adenine (A) → mRNA Uracil (U). Thymine is NOT used in RNA!', 'warn');
  
@@ -1043,3 +1078,4 @@ document.getElementById('startBtn').addEventListener('click', () => {
 </script>
 </body>
 </html>
+
