@@ -88,6 +88,69 @@ canvas {
 .toast.success { border-color:var(--cyto-accent); color:#aaffd4; }
 @keyframes tIn  { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:none} }
 @keyframes tOut { from{opacity:1} to{opacity:0;transform:translateX(-12px)} }
+
+/* ═══ Learning Panel ═══ */
+#lessonCard {
+  position:absolute;
+  right:16px;
+  top:76px;
+  width:min(360px, calc(100vw - 32px));
+  padding:14px 15px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.12);
+  background:linear-gradient(180deg, rgba(2,14,28,0.92), rgba(0,0,0,0.7));
+  backdrop-filter:blur(6px);
+  z-index:11;
+  color:#d9f4ff;
+  box-shadow:0 12px 30px rgba(0,0,0,0.28);
+}
+#lessonStage {
+  font-family:'Orbitron',sans-serif;
+  font-size:11px;
+  letter-spacing:2px;
+  margin-bottom:8px;
+  color:var(--warn);
+}
+#lessonTitle {
+  font-family:'Orbitron',sans-serif;
+  font-size:18px;
+  line-height:1.25;
+  margin-bottom:8px;
+}
+#lessonText {
+  font-size:11px;
+  line-height:1.7;
+  color:rgba(232,244,255,0.84);
+  margin-bottom:10px;
+}
+#lessonList {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.tag {
+  padding:5px 8px;
+  border-radius:999px;
+  font-size:10px;
+  letter-spacing:1px;
+  color:#dff9ff;
+  border:1px solid rgba(255,255,255,0.14);
+  background:rgba(255,255,255,0.06);
+}
+
+@media (max-width: 920px) {
+  #lessonCard {
+    left:16px;
+    right:16px;
+    top:auto;
+    bottom:16px;
+    width:auto;
+  }
+  #biolog {
+    bottom:190px;
+    width:min(320px, calc(100vw - 32px));
+  }
+}
  
 /* ═══ Score Pop ═══ */
 .spop {
@@ -205,7 +268,7 @@ canvas {
   <div id="hud">
     <div class="hpanel">
       <div class="hlabel">mRNA INTEGRITY (HP)</div>
-      <div class="hval cyan" id="hpNum">100</div>
+      <div class="hval cyan" id="hpNum">120</div>
       <div class="minibar"><div class="minibar-fill" id="hpFill" style="width:100%"></div></div>
     </div>
     <div class="hpanel center">
@@ -221,16 +284,22 @@ canvas {
  
   <!-- Bio-Log -->
   <div id="biolog"></div>
+
+  <!-- Learning Panel -->
+  <div id="lessonCard">
+    <div id="lessonStage">SCIENCE FOCUS</div>
+    <div id="lessonTitle">Protein synthesis turns DNA instructions into a protein.</div>
+    <div id="lessonText">In transcription, RNA polymerase reads DNA in the nucleus and builds messenger RNA using A, U, G, and C. In translation, the ribosome reads mRNA codons in the cytoplasm while tRNA anticodons bring amino acids to build a protein.</div>
+    <div id="lessonList"></div>
+  </div>
  
   <!-- Start Screen -->
   <div class="overlay-screen" id="startScreen">
     <div class="ov-title">PROTEIN<br>SYNTHESIS KART</div>
     <div class="ov-body">
-      <strong>Level 1 — Transcription (Nucleus):</strong> Drive as <strong>RNA Polymerase</strong>.<br>
-      Collect DNA Nucleotides in order to build the mRNA strand.<br>
-      DNA Adenine (A) becomes <strong>Uracil (U)</strong> in RNA — not Thymine!<br><br>
-      <strong class="g">Level 2 — Translation (Cytoplasm):</strong> Become the <strong class="g">Ribosome</strong>.<br>
-      Match <strong class="g">tRNA Anticodons</strong> to mRNA Codons to grow the Amino Acid Chain.
+      <strong>Transcription happens in the nucleus.</strong> You are <strong>RNA polymerase</strong> reading <strong>DNA nucleotides (A, T, G, C)</strong> and building <strong>messenger RNA</strong> with <strong>A, U, G, C</strong>.<br>
+      Every three mRNA bases form a <strong>codon</strong> that carries instructions for translation.<br><br>
+      <strong class="g">Translation happens in the cytoplasm.</strong> You become the <strong class="g">ribosome</strong>, read the mRNA codons, and collect the matching <strong class="g">tRNA anticodon</strong> so the correct <strong class="g">amino acid</strong> joins the growing protein chain.
     </div>
     <div style="color:rgba(100,160,200,0.5);font-size:11px;letter-spacing:1px;">Arrow Keys or W A S D to move in any direction</div>
     <button class="btn" id="startBtn">INITIATE TRANSCRIPTION</button>
@@ -283,11 +352,46 @@ const CODONS = [
   { codon:'UGU', anticodon:'ACA', aa:'CYS' },
 ];
 const ALL_DECOYS = ['GCA','UCU','AGG','CUU','GAA','UUG','CCU','AGA','UAA','GGA'];
+const DAMAGE_ON_MISTAKE = 10;
+const PICKUP_RADIUS_BONUS = 22;
+const MAGNET_DISTANCE = 150;
+const LESSONS = {
+  intro: {
+    stage: 'BIG IDEA',
+    title: 'Protein synthesis explains how DNA instructions become a protein.',
+    text: 'The project shows both steps. Transcription copies a DNA message into messenger RNA in the nucleus. Translation uses a ribosome, tRNA anticodons, and amino acids in the cytoplasm to build a protein.',
+    tags: ['DNA', 'mRNA', 'Codon', 'tRNA', 'Amino Acid Chain']
+  },
+  level1: {
+    stage: 'TRANSCRIPTION · NUCLEUS',
+    title: 'RNA polymerase reads DNA and builds messenger RNA.',
+    text: 'Collect the highlighted DNA nucleotide in order. RNA uses A, U, G, and C, so when DNA has A, messenger RNA gets U. Every three mRNA bases will later act as a codon.',
+    tags: ['Location: Nucleus', 'DNA: A T G C', 'RNA Polymerase', 'mRNA: A U G C', 'Codons form from 3 RNA bases']
+  },
+  transition: {
+    stage: 'mRNA EXIT',
+    title: 'The finished mRNA leaves the nucleus through a nuclear pore.',
+    text: 'Now the message can travel to the cytoplasm. The ribosome will read each mRNA codon, and tRNA molecules with matching anticodons will deliver amino acids.',
+    tags: ['Messenger RNA', 'Nuclear Pore', 'Cytoplasm', 'Ribosome']
+  },
+  level2: {
+    stage: 'TRANSLATION · CYTOPLASM',
+    title: 'The ribosome reads codons and tRNA brings amino acids.',
+    text: 'Move the ribosome to the correct tRNA. The anticodon must match the current mRNA codon, and the attached amino acid is added to the growing chain to form a protein.',
+    tags: ['Location: Cytoplasm', 'Ribosome', 'mRNA Codons', 'tRNA Anticodon', 'Amino Acid Chain = Protein']
+  },
+  win: {
+    stage: 'COMPLETE',
+    title: 'Protein synthesis is complete.',
+    text: 'Transcription turned DNA information into messenger RNA, and translation used codons, anticodons, and amino acids to build a protein in the correct order.',
+    tags: ['Transcription', 'Translation', 'Protein']
+  }
+};
  
 // ─── State ────────────────────────────────────────────────────────────────────
 let gameState = 'menu';   // menu | playing | transition | win | gameover
 let level     = 1;
-let hp        = 100;
+let hp        = 120;
 let score     = 0;
 let dnaIndex  = 0;        // which nucleotide to collect next
 let codonIdx  = 0;        // which codon to match next
@@ -363,16 +467,15 @@ function spawnTRNAs() {
   tRNAs = [];
   const W = canvas.width, H = canvas.height;
   const correct = CODONS[codonIdx];
-  // pick 2 unique decoys
+  // pick 1 unique decoy to keep the game easier and more classroom-friendly
   const decoys = [];
   for (const d of ALL_DECOYS) {
     if (d !== correct.anticodon && !decoys.includes(d)) decoys.push(d);
-    if (decoys.length === 2) break;
+    if (decoys.length === 1) break;
   }
   const pool = [
     { anticodon: correct.anticodon, isCorrect: true,  aa: correct.aa },
     { anticodon: decoys[0],         isCorrect: false, aa: '???' },
-    { anticodon: decoys[1],         isCorrect: false, aa: '???' },
   ].sort(() => Math.random() - 0.5);
  
   pool.forEach((t, i) => {
@@ -448,8 +551,9 @@ function log(msg, type = '') {
 // ─── HUD ─────────────────────────────────────────────────────────────────────
 function updateHUD() {
   const safeHp = Math.max(0, Math.round(hp));
+  const hpPercent = Math.max(0, Math.min(100, safeHp / 120 * 100));
   document.getElementById('hpNum').textContent   = safeHp;
-  document.getElementById('hpFill').style.width  = safeHp + '%';
+  document.getElementById('hpFill').style.width  = hpPercent + '%';
   document.getElementById('scoreNum').textContent = score;
  
   const phaseLbl  = document.getElementById('phaseLbl');
@@ -475,6 +579,22 @@ function updateHUD() {
     }
     progFill.style.width = (aminoChain.length / CODONS.length * 100) + '%';
   }
+}
+
+function updateLessonCard(mode) {
+  const lesson = LESSONS[mode] || LESSONS.intro;
+  document.getElementById('lessonStage').textContent = lesson.stage;
+  document.getElementById('lessonTitle').textContent = lesson.title;
+  document.getElementById('lessonText').textContent = lesson.text;
+
+  const list = document.getElementById('lessonList');
+  list.innerHTML = '';
+  lesson.tags.forEach(tag => {
+    const el = document.createElement('div');
+    el.className = 'tag';
+    el.textContent = tag;
+    list.appendChild(el);
+  });
 }
  
 // ─── Background ───────────────────────────────────────────────────────────────
@@ -671,6 +791,14 @@ function drawMRNAStrip() {
     ctx.fillStyle    = '#ffcc00';
     ctx.textAlign    = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(base, bx + bw/2, sy - 2);
+
+    if ((i + 1) % 3 === 0) {
+      const codonStart = bx - (2 * (bw + gap));
+      ctx.font = '7px Share Tech Mono, monospace';
+      ctx.fillStyle = 'rgba(255,220,120,0.65)';
+      ctx.textAlign = 'center';
+      ctx.fillText('CODON', codonStart + (bw * 1.5) + gap, sy + 21);
+    }
   });
   ctx.restore();
 }
@@ -803,6 +931,47 @@ function drawAminoChain() {
   ctx.fillText('AMINO ACID CHAIN (PROTEIN)', midX, player.y + r + 14);
   ctx.restore();
 }
+
+function drawTargetGuide(t) {
+  let target = null;
+  let color = '#00c8ff';
+  let label = '';
+
+  if (level === 1 && dnaIndex < nucleotides.length) {
+    target = nucleotides[dnaIndex];
+    label = 'NEXT DNA';
+    color = '#00c8ff';
+  } else if (level === 2) {
+    target = tRNAs.find(tr => !tr.collected && tr.isCorrect);
+    label = 'MATCHING tRNA';
+    color = '#00ff88';
+  }
+
+  if (!target) return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(player.x, player.y);
+  ctx.lineTo(target.x, target.y);
+  ctx.strokeStyle = color + '44';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 8]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const pulse = 8 + Math.sin(t * 5) * 2;
+  ctx.beginPath();
+  ctx.arc(target.x, target.y, target.r + PICKUP_RADIUS_BONUS + pulse, 0, Math.PI * 2);
+  ctx.strokeStyle = color + '55';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.font = '9px Orbitron, monospace';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.fillText(label, target.x, target.y - target.r - 26);
+  ctx.restore();
+}
  
 // ─── Draw Particles ──────────────────────────────────────────────────────────
 function drawParticles() {
@@ -834,7 +1003,7 @@ function checkCollisions() {
     // only the current target nucleotide is active
     const n = nucleotides[dnaIndex];
     if (!n || n.collected) return;
-    if (dist2(player.x, player.y, n.x, n.y) < n.r + 16) {
+    if (dist2(player.x, player.y, n.x, n.y) < n.r + PICKUP_RADIUS_BONUS) {
       n.collected = true;
       mRNABuilt.push(n.rna);
       score += 100;
@@ -861,7 +1030,7 @@ function checkCollisions() {
   } else {
     tRNAs.forEach(tr => {
       if (tr.collected) return;
-      if (dist2(player.x, player.y, tr.x, tr.y) < tr.r + 17) {
+      if (dist2(player.x, player.y, tr.x, tr.y) < tr.r + PICKUP_RADIUS_BONUS) {
         tr.collected = true;
         if (tr.isCorrect) {
           const cd = CODONS[codonIdx];
@@ -881,17 +1050,37 @@ function checkCollisions() {
             log(`Ribosome moves to next Codon: ${CODONS[codonIdx].codon}. Find the correct tRNA Anticodon!`, '');
           }
         } else {
-          hp = Math.max(0, hp - 20);
+          hp = Math.max(0, hp - DAMAGE_ON_MISTAKE);
           player.flashTimer = 16;
           burst(tr.x, tr.y, '#ff3366', 12);
-          floatText(tr.x, tr.y, 'WRONG! −20 HP', '#ff3366');
-          log(`✗ Anticodon ${tr.anticodon} does NOT match Codon ${CODONS[codonIdx].codon}. mRNA Integrity −20!`, 'warn');
+          floatText(tr.x, tr.y, `WRONG! −${DAMAGE_ON_MISTAKE} HP`, '#ff3366');
+          log(`✗ Anticodon ${tr.anticodon} does NOT match Codon ${CODONS[codonIdx].codon}. mRNA Integrity −${DAMAGE_ON_MISTAKE}.`, 'warn');
           spawnTRNAs();
           if (hp <= 0) { gameState = 'gameover'; setTimeout(doGameOver, 500); }
         }
       }
     });
   }
+}
+
+function attractPlayerToTarget(dt) {
+  let target = null;
+  if (level === 1 && dnaIndex < nucleotides.length) {
+    target = nucleotides[dnaIndex];
+  } else if (level === 2) {
+    target = tRNAs.find(tr => !tr.collected && tr.isCorrect);
+  }
+
+  if (!target) return;
+
+  const dx = target.x - player.x;
+  const dy = target.y - player.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance === 0 || distance > MAGNET_DISTANCE) return;
+
+  const strength = (1 - distance / MAGNET_DISTANCE) * 0.18 * dt;
+  player.x += dx * strength;
+  player.y += dy * strength;
 }
  
 // ─── Game loop ────────────────────────────────────────────────────────────────
@@ -968,6 +1157,7 @@ function gameLoop(ts) {
   const t   = ts / 1000;
  
   handleInput(dt);
+  attractPlayerToTarget(dt);
   updateParticles();
   if (player.flashTimer > 0) player.flashTimer -= dt;
   checkCollisions();
@@ -985,7 +1175,8 @@ function gameLoop(ts) {
     drawCodonTrack();
     drawAminoChain();
   }
- 
+
+  drawTargetGuide(t);
   drawParticles();
   drawTrail();
   drawPlayer();
@@ -995,6 +1186,7 @@ function gameLoop(ts) {
  
 // ─── Screen transitions ───────────────────────────────────────────────────────
 function doTransition() {
+  updateLessonCard('transition');
   document.getElementById('mrnaBand').textContent = mRNABuilt.join('  ');
   document.getElementById('transScreen').classList.add('show');
 }
@@ -1006,6 +1198,7 @@ document.getElementById('enterCytoBtn').addEventListener('click', () => {
   aminoChain = [];
   resetPlayer(2);
   spawnTRNAs();
+  updateLessonCard('level2');
   log('You are now the RIBOSOME in the Cytoplasm!', 'success');
   log(`Read mRNA codons. Collect the correct tRNA Anticodon to add each Amino Acid.`, '');
   log(`First Codon: ${CODONS[0].codon}  →  find Anticodon: ${CODONS[0].anticodon}`, '');
@@ -1015,14 +1208,15 @@ document.getElementById('enterCytoBtn').addEventListener('click', () => {
 });
  
 function doWin() {
+  updateLessonCard('win');
   const end = document.getElementById('endScreen');
   document.getElementById('endTitle').textContent = 'PROTEIN COMPLETE!';
   document.getElementById('endTitle').style.color = '#00ff88';
   document.getElementById('endTitle').style.textShadow = '0 0 40px #00ff8866';
   document.getElementById('endBody').innerHTML =
-    `You successfully completed the Central Dogma of Molecular Biology:<br><br>
-    <strong style="color:#00c8ff">DNA → mRNA</strong> (Transcription in the Nucleus)<br>
-    <strong style="color:#00ff88">mRNA → Protein</strong> (Translation in the Cytoplasm)<br><br>
+    `You completed both stages of protein synthesis.<br><br>
+    <strong style="color:#00c8ff">Transcription in the nucleus:</strong> RNA polymerase read DNA nucleotides and built messenger RNA using A, U, G, and C.<br>
+    <strong style="color:#00ff88">Translation in the cytoplasm:</strong> the ribosome read mRNA codons, matching tRNA anticodons delivered amino acids, and the amino acid chain became a protein.<br><br>
     <span style="color:#ffcc00;font-family:Orbitron,monospace;font-size:13px;letter-spacing:2px">${aminoChain.join(' → ')}</span><br><br>
     <span style="color:#446655;font-size:11px">FINAL SCORE: ${score}</span>`;
   document.getElementById('endBtn').className = 'btn g';
@@ -1030,6 +1224,7 @@ function doWin() {
 }
  
 function doGameOver() {
+  updateLessonCard('level2');
   const end = document.getElementById('endScreen');
   document.getElementById('endTitle').textContent = 'mRNA DEGRADED';
   document.getElementById('endTitle').style.color = '#ff3366';
@@ -1048,7 +1243,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
  
   // reset everything
   level      = 1;
-  hp         = 100;
+  hp         = 120;
   score      = 0;
   dnaIndex   = 0;
   codonIdx   = 0;
@@ -1059,11 +1254,13 @@ document.getElementById('startBtn').addEventListener('click', () => {
   initStars();
   resetPlayer(1);
   spawnNucleotides();
- 
+  updateLessonCard('level1');
+
   log('TRANSCRIPTION INITIATED. You are RNA Polymerase inside the Nucleus.', '');
   log('Use Arrow Keys or W A S D to move directly. No turning required.', '');
   log('DNA Nucleotides are labelled on screen. Collect them in order!', '');
   log('Remember: DNA Adenine (A) → mRNA Uracil (U). Thymine is NOT used in RNA!', 'warn');
+  log('Each group of 3 mRNA bases makes a codon that the ribosome will read later.', '');
  
   gameState = 'playing';
   lastTime  = performance.now();
@@ -1072,10 +1269,10 @@ document.getElementById('startBtn').addEventListener('click', () => {
  
 // ─── Static preview render ────────────────────────────────────────────────────
 (function preview() {
+  updateLessonCard('intro');
   ctx.fillStyle = '#000d1f';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 })();
 </script>
 </body>
 </html>
-
