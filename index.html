@@ -1,632 +1,1045 @@
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Protein Synthesis Kart</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Courier+Prime:wght@400;700&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap');
+ 
 :root {
-  --dna-blue:    #4fc3f7;
-  --rna-amber:   #ffb74d;
-  --nucleus-bg:  #0d1b3e;
-  --cytoplasm-bg:#0a2e1a;
-  --neon-green:  #69ff47;
-  --neon-pink:   #ff4fa3;
-  --tRNA-teal:   #26c6da;
-  --amino-gold:  #ffd54f;
-  --wall-col:    #1565c0;
-  --wall-cyto:   #1b5e20;
-  --ui-bg:       rgba(0,0,0,0.72);
-  --font-main:   'Nunito', sans-serif;
-  --font-mono:   'Courier Prime', monospace;
+  --nucleus-bg: #000d1f;
+  --nucleus-accent: #00c8ff;
+  --nucleus-glow: #0066ff;
+  --cyto-bg: #001a0c;
+  --cyto-accent: #00ff88;
+  --cyto-glow: #00cc44;
+  --hud-bg: rgba(0,0,0,0.78);
+  --warn: #ffcc00;
+  --danger: #ff3366;
+  --white: #e8f4ff;
 }
-
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:#000;font-family:var(--font-main);overflow:hidden;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;}
-canvas{display:block; position: absolute; inset: 0;}
-
-/* ── SCREENS ── */
-.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s;z-index:30;}
-.screen.hidden{opacity:0;pointer-events:none;}
-
-/* ── START ── */
-#startScreen{background:radial-gradient(ellipse 90% 80% at 50% 50%,#0a1628 0%,#000 100%);}
-.logo-wrap{text-align:center;margin-bottom:1.8rem;}
-.logo-title{font-size:clamp(2.4rem,6vw,5rem);font-weight:900;line-height:1;letter-spacing:-.01em;
-  background:linear-gradient(135deg,#4fc3f7,#69ff47,#ffb74d);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  filter:drop-shadow(0 0 30px rgba(79,195,247,.4));}
-.logo-sub{font-size:clamp(.75rem,1.8vw,1.1rem);color:rgba(255,255,255,.5);letter-spacing:.3em;text-transform:uppercase;margin-top:.4rem;font-family:var(--font-mono);}
-
-.phase-cards{display:flex;gap:1.2rem;margin-bottom:2rem;flex-wrap:wrap;justify-content:center;padding:0 1rem;}
-.phase-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:1rem 1.4rem;max-width:200px;text-align:left;}
-.phase-card h3{font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;margin-bottom:.6rem;font-family:var(--font-mono);}
-.phase-card.nucleus h3{color:var(--dna-blue);}
-.phase-card.cytoplasm h3{color:var(--neon-green);}
-.phase-card ul{list-style:none;font-size:.72rem;line-height:1.8;color:rgba(255,255,255,.65);}
-.phase-card ul li::before{content:'▸ ';opacity:.5;}
-
-.start-btn{background:transparent;border:2px solid var(--neon-green);color:var(--neon-green);
-  font-family:var(--font-main);font-size:1.1rem;font-weight:700;letter-spacing:.2em;
-  padding:.9rem 3.5rem;cursor:pointer;border-radius:8px;text-transform:uppercase;
-  box-shadow:0 0 24px rgba(105,255,71,.35);transition:all .2s;}
-.start-btn:hover{box-shadow:0 0 48px rgba(105,255,71,.6);transform:scale(1.04);}
-.controls-hint{margin-top:1.6rem;color:rgba(255,255,255,.3);font-size:.7rem;letter-spacing:.15em;text-align:center;line-height:2;font-family:var(--font-mono);}
-.controls-hint b{color:rgba(255,255,255,.6);}
-
-/* ── HUD ── */
-#hud{position:absolute;top:0;left:0;right:0;z-index:20;pointer-events:none;
-  display:flex;align-items:stretch;justify-content:space-between;gap:8px;
-  padding:10px 14px;background:var(--ui-bg);border-bottom:1px solid rgba(255,255,255,.08);}
-#hud.hidden{display:none;}
-.hud-block{display:flex;flex-direction:column;gap:1px;}
-.hud-lbl{font-size:.52rem;letter-spacing:.2em;color:rgba(255,255,255,.35);text-transform:uppercase;font-family:var(--font-mono);}
-.hud-val{font-size:1rem;font-weight:700;color:#fff;}
-.hud-phase{background:rgba(255,255,255,.06);border-radius:8px;padding:4px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center;}
-.hud-phase-name{font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;font-family:var(--font-mono);}
-.hud-phase-name.nucleus{color:var(--dna-blue);}
-.hud-phase-name.cytoplasm{color:var(--neon-green);}
-.hud-seq{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
-.nt{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:.65rem;font-weight:700;border:1.5px solid;transition:all .25s;font-family:var(--font-mono);}
-.nt.A{color:#69ff47;border-color:#69ff47;background:rgba(105,255,71,.1);}
-.nt.T{color:#ffb74d;border-color:#ffb74d;background:rgba(255,183,77,.1);}
-.nt.U{color:#ff4fa3;border-color:#ff4fa3;background:rgba(255,79,163,.1);}
-.nt.G{color:#b06aff;border-color:#b06aff;background:rgba(176,106,255,.1);}
-.nt.C{color:#4fc3f7;border-color:#4fc3f7;background:rgba(79,195,247,.1);}
-.nt.done{opacity:.25;}
-.nt.next{transform:scale(1.3);box-shadow:0 0 12px currentColor;}
-
-/* ── INFO POPUP ── */
-#infoBox{position:absolute;bottom:0;left:0;right:0;z-index:25;pointer-events:none;
-  background:var(--ui-bg);border-top:1px solid rgba(255,255,255,.08);
-  padding:10px 18px;display:flex;align-items:center;gap:14px;
-  transform:translateY(100%);transition:transform .35s cubic-bezier(.22,1,.36,1);}
-#infoBox.show{transform:translateY(0);}
-.info-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
-.info-title{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;font-family:var(--font-mono);}
-.info-body{font-size:.78rem;color:rgba(255,255,255,.75);line-height:1.5;}
-
-/* ── COUNTDOWN ── */
-#countdown{position:absolute;inset:0;z-index:28;display:flex;align-items:center;justify-content:center;pointer-events:none;}
-#countdown.hidden{display:none;}
-#cdNum{font-size:10rem;font-weight:900;color:var(--neon-green);
-  text-shadow:0 0 60px rgba(105,255,71,.8);animation:cdpop .85s ease-out;}
-@keyframes cdpop{0%{transform:scale(2.5);opacity:0;}45%{transform:scale(.9);opacity:1;}100%{transform:scale(1);}}
-
-/* ── PHASE TRANSITION ── */
-#phaseBanner{position:absolute;inset:0;z-index:27;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:rgba(0,0,0,.82);pointer-events:none;transition:opacity .5s;}
-#phaseBanner.hidden{opacity:0;pointer-events:none;}
-.pb-label{font-size:.8rem;letter-spacing:.35em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:.5rem;font-family:var(--font-mono);}
-.pb-title{font-size:clamp(2rem,6vw,4rem);font-weight:900;letter-spacing:.05em;}
-.pb-title.t{color:var(--dna-blue);text-shadow:0 0 40px rgba(79,195,247,.7);}
-.pb-title.r{color:var(--neon-green);text-shadow:0 0 40px rgba(105,255,71,.7);}
-.pb-desc{font-size:.88rem;color:rgba(255,255,255,.6);margin-top:.8rem;max-width:440px;text-align:center;line-height:1.7;}
-
-/* ── WIN SCREEN ── */
-#winScreen{background:radial-gradient(ellipse 90% 80% at 50% 50%,#051a10 0%,#000 100%);}
-.win-title{font-size:clamp(2rem,6vw,4.5rem);font-weight:900;color:var(--neon-green);
-  text-shadow:0 0 40px rgba(105,255,71,.9);margin-bottom:.3rem;animation:winpulse 1.8s ease-in-out infinite;}
-@keyframes winpulse{0%,100%{text-shadow:0 0 30px rgba(105,255,71,.8);}50%{text-shadow:0 0 80px rgba(105,255,71,1);}}
-.win-protein{font-family:var(--font-mono);color:var(--amino-gold);font-size:clamp(.75rem,2vw,1.05rem);
-  letter-spacing:.15em;margin-bottom:1.2rem;text-shadow:0 0 10px rgba(255,213,79,.6);}
-.win-chain{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:1.6rem;max-width:500px;}
-.win-aa{padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:700;
-  background:rgba(255,213,79,.15);border:1px solid var(--amino-gold);color:var(--amino-gold);font-family:var(--font-mono);}
-.win-summary{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;
-  padding:1.2rem 2rem;margin-bottom:1.5rem;display:flex;gap:2.5rem;}
-.ws-item{text-align:center;}
-.ws-val{font-size:1.8rem;font-weight:900;color:#fff;display:block;}
-.ws-lbl{font-size:.6rem;letter-spacing:.2em;color:rgba(255,255,255,.4);text-transform:uppercase;font-family:var(--font-mono);}
-.win-glossary{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;
-  padding:1rem 1.4rem;max-width:520px;margin-bottom:1.4rem;}
-.win-glossary h4{font-size:.65rem;letter-spacing:.25em;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:.6rem;font-family:var(--font-mono);}
-.gl-grid{display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem;}
-.gl-item{font-size:.7rem;color:rgba(255,255,255,.65);line-height:1.5;}
-.gl-item b{color:#fff;}
-
-/* ── DEAD ── */
-#deadScreen{background:radial-gradient(ellipse 80% 70% at 50% 50%,#1a0508 0%,#000 100%);}
-.dead-title{font-size:clamp(2rem,6vw,4rem);font-weight:900;color:var(--neon-pink);
-  text-shadow:0 0 30px rgba(255,79,163,.9);margin-bottom:.4rem;animation:shake .4s ease;}
-@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-14px);}75%{transform:translateX(14px);}50%{transform:translateX(10px);}}
-.dead-sub{color:rgba(255,255,255,.45);font-size:.9rem;margin-bottom:1.8rem;font-family:var(--font-mono);}
-.retry-btn{background:transparent;border:2px solid var(--neon-pink);color:var(--neon-pink);
-  font-family:var(--font-main);font-size:1rem;font-weight:700;letter-spacing:.2em;
-  padding:.85rem 3rem;cursor:pointer;border-radius:8px;text-transform:uppercase;
-  box-shadow:0 0 20px rgba(255,79,163,.35);transition:all .2s;}
-.retry-btn:hover{box-shadow:0 0 40px rgba(255,79,163,.6);transform:scale(1.04);}
-
-/* ── DAMAGE ── */
-#dmgFlash{position:absolute;inset:0;z-index:22;background:rgba(255,79,163,.28);pointer-events:none;opacity:0;transition:opacity .1s;}
-#dmgFlash.on{opacity:1;}
-
-/* ── PARTICLE CANVAS ── */
-#pc{position:absolute;inset:0;pointer-events:none;z-index:21;}
+ 
+* { margin:0; padding:0; box-sizing:border-box; }
+ 
+body {
+  background:#000;
+  overflow:hidden;
+  font-family:'Share Tech Mono', monospace;
+  user-select:none;
+}
+ 
+#wrap { position:relative; width:100vw; height:100vh; }
+ 
+canvas {
+  display:block;
+  position:absolute;
+  top:0; left:0;
+  width:100%; height:100%;
+}
+ 
+/* ═══ HUD ═══ */
+#hud {
+  position:absolute; top:0; left:0; right:0;
+  height:56px;
+  display:none;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 18px;
+  pointer-events:none;
+  z-index:10;
+  background:linear-gradient(180deg, rgba(0,0,0,0.82) 0%, transparent 100%);
+}
+.hpanel { display:flex; flex-direction:column; gap:4px; }
+.hlabel { font-size:8px; letter-spacing:2.5px; color:rgba(255,255,255,0.4); }
+.hval   { font-family:'Orbitron',sans-serif; font-size:16px; font-weight:700; }
+.hval.cyan   { color:var(--nucleus-accent); }
+.hval.green  { color:var(--cyto-accent); }
+.hval.white  { color:var(--white); font-size:11px; letter-spacing:1px; line-height:1.5; text-align:center; }
+.minibar { width:130px; height:5px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; }
+.minibar-fill { height:100%; border-radius:3px; transition:width 0.35s ease; }
+#hpFill   { background:linear-gradient(90deg,#00ffe0,#0077ff); }
+#progFill { background:linear-gradient(90deg,#00ff88,#aaff00); }
+.hpanel.center { align-items:center; min-width:280px; }
+ 
+/* ═══ Bio-Log Toasts (bottom-left, semi-transparent, no sidebar) ═══ */
+#biolog {
+  position:absolute;
+  bottom:72px; left:16px;
+  width:300px;
+  pointer-events:none;
+  z-index:11;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.toast {
+  padding:7px 11px;
+  border-radius:5px;
+  font-size:11px;
+  line-height:1.55;
+  border-left:3px solid var(--nucleus-accent);
+  background:rgba(0,0,0,0.7);
+  color:#aaddf5;
+  backdrop-filter:blur(4px);
+  animation:tIn 0.3s ease both;
+}
+.toast.warn    { border-color:var(--warn);   color:#ffe8aa; }
+.toast.success { border-color:var(--cyto-accent); color:#aaffd4; }
+@keyframes tIn  { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:none} }
+@keyframes tOut { from{opacity:1} to{opacity:0;transform:translateX(-12px)} }
+ 
+/* ═══ Score Pop ═══ */
+.spop {
+  position:absolute;
+  font-family:'Orbitron',sans-serif;
+  font-size:17px; font-weight:700;
+  pointer-events:none; z-index:12;
+  animation:spopAnim 0.85s ease forwards;
+}
+@keyframes spopAnim { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-55px)} }
+ 
+/* ═══ Floating text on canvas wrapper ═══ */
+.ftxt {
+  position:absolute;
+  font-family:'Orbitron',sans-serif;
+  font-size:13px; font-weight:700;
+  pointer-events:none; z-index:12;
+  text-shadow:0 0 10px currentColor;
+  animation:ftAnim 1.1s ease forwards;
+}
+@keyframes ftAnim { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-50px)} }
+ 
+/* ═══ Overlays ═══ */
+.overlay-screen {
+  position:absolute; inset:0; z-index:20;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:20px;
+  background:rgba(0,0,0,0.93);
+}
+.overlay-screen.hidden { display:none; }
+ 
+.ov-title {
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(22px,4.5vw,46px);
+  font-weight:900;
+  letter-spacing:5px;
+  text-align:center;
+  line-height:1.2;
+  color:var(--nucleus-accent);
+  text-shadow:0 0 40px #00aaff66, 0 0 80px #003399;
+}
+.ov-body {
+  color:rgba(200,230,255,0.75);
+  font-size:12.5px;
+  text-align:center;
+  max-width:500px;
+  line-height:1.9;
+}
+.ov-body strong { color:var(--nucleus-accent); }
+.ov-body strong.g { color:var(--cyto-accent); }
+ 
+.btn {
+  font-family:'Orbitron',sans-serif;
+  font-size:12px; font-weight:700;
+  letter-spacing:3px;
+  padding:12px 36px;
+  background:transparent;
+  border:2px solid var(--nucleus-accent);
+  color:var(--nucleus-accent);
+  cursor:pointer;
+  border-radius:4px;
+  transition:background 0.2s, box-shadow 0.2s;
+}
+.btn:hover { background:rgba(0,200,255,0.08); box-shadow:0 0 22px #00aaff44; }
+.btn.g { border-color:var(--cyto-accent); color:var(--cyto-accent); }
+.btn.g:hover { background:rgba(0,255,136,0.08); box-shadow:0 0 22px #00ff8844; }
+.btn.r { border-color:var(--danger); color:var(--danger); }
+.btn.r:hover { background:rgba(255,50,100,0.08); box-shadow:0 0 22px #ff336644; }
+ 
+/* ═══ Transition screen ═══ */
+#transScreen {
+  position:absolute; inset:0; z-index:15;
+  display:none;
+  flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:22px;
+  background:radial-gradient(ellipse at center, #000d30 0%, #000 100%);
+}
+#transScreen.show { display:flex; }
+#transScreen h2 {
+  font-family:'Orbitron',sans-serif;
+  font-size:26px; color:var(--cyto-accent);
+  letter-spacing:4px;
+  text-shadow:0 0 30px var(--cyto-glow);
+}
+#transScreen p {
+  color:#aaffcc; font-size:12px;
+  text-align:center; max-width:420px; line-height:1.9;
+}
+#transScreen p strong { color:#fff; }
+#mrnaBand {
+  font-family:'Orbitron',sans-serif;
+  font-size:22px; letter-spacing:6px;
+  color:var(--warn);
+  text-shadow:0 0 12px #ffcc0066;
+}
+.pore-ring {
+  width:88px; height:88px; border-radius:50%;
+  border:3px solid var(--nucleus-accent);
+  box-shadow:0 0 30px var(--nucleus-accent), inset 0 0 20px #00336644;
+  animation:poreP 1.3s ease-in-out infinite;
+}
+@keyframes poreP {
+  0%,100%{transform:scale(1); box-shadow:0 0 20px var(--nucleus-accent);}
+  50%{transform:scale(1.22); box-shadow:0 0 55px var(--nucleus-accent),0 0 100px #0055ff44;}
+}
 </style>
 </head>
 <body>
-
-<canvas id="gc"></canvas>
-<canvas id="pc"></canvas>
-
-<div id="hud" class="hidden">
-  <div class="hud-block">
-    <div class="hud-lbl">Health</div>
-    <div class="hud-val" id="hudHp">♥♥♥</div>
-  </div>
-  <div class="hud-block" style="flex:1;align-items:center;">
-    <div class="hud-lbl" style="text-align:center;">Collect in order</div>
-    <div class="hud-seq" id="hudSeq"></div>
-  </div>
-  <div class="hud-phase">
-    <div class="hud-lbl">Location</div>
-    <div class="hud-phase-name nucleus" id="hudPhase">Nucleus</div>
-  </div>
-  <div class="hud-block" style="align-items:flex-end;">
-    <div class="hud-lbl">Score</div>
-    <div class="hud-val" id="hudScore">0</div>
-  </div>
-</div>
-
-<div id="infoBox">
-  <div class="info-icon" id="infoIcon">🧬</div>
-  <div>
-    <div class="info-title" id="infoTitle">Title</div>
-    <div class="info-body"  id="infoBody">Body</div>
-  </div>
-</div>
-
-<div id="countdown" class="hidden"><div id="cdNum">3</div></div>
-
-<div id="phaseBanner" class="hidden">
-  <div class="pb-label" id="pbLabel">Phase complete</div>
-  <div class="pb-title" id="pbTitle">Translation</div>
-  <div class="pb-desc"  id="pbDesc">Now in the cytoplasm — the ribosome reads each codon and tRNA brings the matching amino acid.</div>
-</div>
-
-<div id="dmgFlash"></div>
-
-<div id="startScreen" class="screen">
-  <div class="logo-wrap">
-    <div class="logo-title">Protein Synthesis Kart</div>
-    <div class="logo-sub">Race through Transcription & Translation</div>
-  </div>
-  <div class="phase-cards">
-    <div class="phase-card nucleus">
-      <h3>🔵 Phase 1 — Transcription (Nucleus)</h3>
-      <ul>
-        <li>DNA double helix unwinds</li>
-        <li>RNA Polymerase reads the template</li>
-        <li>Nucleotides A,T,G,C → A,U,G,C</li>
-        <li>mRNA codon strand is built</li>
-        <li>mRNA exits to cytoplasm</li>
-      </ul>
+<div id="wrap">
+  <canvas id="c"></canvas>
+ 
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hpanel">
+      <div class="hlabel">mRNA INTEGRITY (HP)</div>
+      <div class="hval cyan" id="hpNum">100</div>
+      <div class="minibar"><div class="minibar-fill" id="hpFill" style="width:100%"></div></div>
     </div>
-    <div class="phase-card cytoplasm">
-      <h3>🟢 Phase 2 — Translation (Cytoplasm)</h3>
-      <ul>
-        <li>Ribosome clamps onto mRNA</li>
-        <li>Codons are read 3 bases at a time</li>
-        <li>tRNA brings matching amino acids</li>
-        <li>Anticodon pairs with codon</li>
-        <li>Amino acid chain = protein!</li>
-      </ul>
+    <div class="hpanel center">
+      <div class="hlabel" id="phaseLbl">LEVEL 1 · TRANSCRIPTION · NUCLEUS</div>
+      <div class="hval white" id="targetLbl">—</div>
+    </div>
+    <div class="hpanel" style="align-items:flex-end">
+      <div class="hlabel">SCORE / PROTEIN PROGRESS</div>
+      <div class="hval green" id="scoreNum">0</div>
+      <div class="minibar"><div class="minibar-fill" id="progFill" style="width:0%"></div></div>
     </div>
   </div>
-  <button class="start-btn" id="startBtn">▶ Start Race</button>
-  <div class="controls-hint"><b>Arrow keys</b> or <b>W A S D</b> to drive &nbsp;|&nbsp; Avoid obstacles &nbsp;|&nbsp; Collect nucleotides in order</div>
-</div>
-
-<div id="winScreen" class="screen hidden">
-  <div class="win-title">PROTEIN MADE! 🎉</div>
-  <div class="win-protein" id="winProteinName">ATP Synthase — Amino Acid Chain:</div>
-  <div class="win-chain" id="winChain"></div>
-  <div class="win-summary">
-    <div class="ws-item"><span class="ws-val" id="wsTime">0s</span><span class="ws-lbl">Time</span></div>
-    <div class="ws-item"><span class="ws-val" id="wsScore">0</span><span class="ws-lbl">Score</span></div>
-    <div class="ws-item"><span class="ws-val" id="wsHp">3</span><span class="ws-lbl">HP left</span></div>
-  </div>
-  <div class="win-glossary">
-    <h4>What you just simulated</h4>
-    <div class="gl-grid">
-      <div class="gl-item"><b>DNA</b> — master blueprint in nucleus</div>
-      <div class="gl-item"><b>RNA Polymerase</b> — enzyme that transcribes DNA</div>
-      <div class="gl-item"><b>mRNA</b> — messenger carrying the code</div>
-      <div class="gl-item"><b>Codon</b> — 3-base unit on mRNA (e.g. AUG)</div>
-      <div class="gl-item"><b>Ribosome</b> — translation machine in cytoplasm</div>
-      <div class="gl-item"><b>tRNA</b> — delivers amino acids to ribosome</div>
-      <div class="gl-item"><b>Anticodon</b> — tRNA end that pairs with codon</div>
-      <div class="gl-item"><b>Amino acid chain</b> — the final protein!</div>
+ 
+  <!-- Bio-Log -->
+  <div id="biolog"></div>
+ 
+  <!-- Start Screen -->
+  <div class="overlay-screen" id="startScreen">
+    <div class="ov-title">PROTEIN<br>SYNTHESIS KART</div>
+    <div class="ov-body">
+      <strong>Level 1 — Transcription (Nucleus):</strong> Drive as <strong>RNA Polymerase</strong>.<br>
+      Collect DNA Nucleotides in order to build the mRNA strand.<br>
+      DNA Adenine (A) becomes <strong>Uracil (U)</strong> in RNA — not Thymine!<br><br>
+      <strong class="g">Level 2 — Translation (Cytoplasm):</strong> Become the <strong class="g">Ribosome</strong>.<br>
+      Match <strong class="g">tRNA Anticodons</strong> to mRNA Codons to grow the Amino Acid Chain.
     </div>
+    <div style="color:rgba(100,160,200,0.5);font-size:11px;letter-spacing:1px;">Arrow Keys or W A S D to drive</div>
+    <button class="btn" id="startBtn">INITIATE TRANSCRIPTION</button>
   </div>
-  <button class="start-btn" id="winBtn">▶ Play Again</button>
+ 
+  <!-- Transition Screen -->
+  <div id="transScreen">
+    <div class="pore-ring"></div>
+    <h2>mRNA COMPLETE!</h2>
+    <div id="mrnaBand"></div>
+    <p>The <strong>mRNA</strong> molecule threads through the <strong>Nuclear Pore</strong> into the Cytoplasm.<br>The <strong>Ribosome</strong> is ready to begin Translation.</p>
+    <button class="btn g" id="enterCytoBtn">ENTER CYTOPLASM →</button>
+  </div>
+ 
+  <!-- Win / Game-Over (injected dynamically) -->
+  <div class="overlay-screen hidden" id="endScreen">
+    <div class="ov-title" id="endTitle"></div>
+    <div class="ov-body" id="endBody"></div>
+    <button class="btn" id="endBtn" onclick="location.reload()">PLAY AGAIN</button>
+  </div>
 </div>
-
-<div id="deadScreen" class="screen hidden">
-  <div class="dead-title">mRNA DEGRADED!</div>
-  <div class="dead-sub">A nuclease destroyed your strand.</div>
-  <button class="retry-btn" id="retryBtn">↺ Try Again</button>
-</div>
-
+ 
 <script>
-// ═══════════════════════════════════════════════════════
-//  CANVAS SETUP
-// ═══════════════════════════════════════════════════════
-const gc   = document.getElementById('gc');
-const gctx = gc.getContext('2d');
-const pc   = document.getElementById('pc');
-const pctx = pc.getContext('2d');
-let W, H;
-
-function resize(){
-  W = gc.width = pc.width = window.innerWidth;
-  H = gc.height = pc.height = window.innerHeight;
-  if(splinePts) buildAll();
+// ─────────────────────────────────────────────────────────────────────────────
+//  PROTEIN SYNTHESIS KART  ·  v3  ·  Glitch-free, rubric-complete
+// ─────────────────────────────────────────────────────────────────────────────
+ 
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+ 
+// Resize canvas to window, keep internal resolution in sync
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
-
-// ═══════════════════════════════════════════════════════
-//  BIOLOGY DATA
-// ═══════════════════════════════════════════════════════
-const TRANSCRIPTION_SEQ = ['A','T','G','C','A','T']; 
-const MRNA_SEQ          = ['U','A','C','G','U','A']; 
-const TRANSLATION_SEQ   = ['U','A','C','G','U','A']; 
-const AMINO_ACIDS       = ['Tyr','Val'];              
-const PROTEIN_NAME      = 'ATP Synthase subunit';
-
-const INFO = {
-  A_dna:  { icon:'🔵', title:'Adenine (DNA)', body:'A DNA nucleotide. On the template strand, Adenine pairs with Thymine (T). RNA Polymerase reads it and adds the complementary U to the mRNA.' },
-  T_dna:  { icon:'🟡', title:'Thymine (DNA)', body:'Thymine only exists in DNA, never in RNA. When RNA Polymerase reads T on the DNA template, it places an Adenine (A) on the growing mRNA strand.' },
-  G_dna:  { icon:'🟣', title:'Guanine (DNA)', body:'A purine base in DNA. Guanine on the template pairs with Cytosine (C) in the new mRNA strand during Transcription.' },
-  C_dna:  { icon:'🩵', title:'Cytosine (DNA)', body:'A pyrimidine base in DNA. RNA Polymerase reads Cytosine and places Guanine (G) on the mRNA strand.' },
-  U_rna:  { icon:'🩷', title:'Uracil (mRNA Codon)', body:'Uracil replaces Thymine in RNA. Three mRNA bases together form a CODON — the three-letter code that specifies one amino acid.' },
-  G_rna:  { icon:'🟣', title:'Guanine (mRNA Codon)', body:'Part of the mRNA codon sequence. The ribosome reads codons in groups of 3. Each codon calls a specific tRNA with a matching anticodon.' },
-  C_rna:  { icon:'🩵', title:'Cytosine (mRNA Codon)', body:'A codon base on the mRNA. When the ribosome reads this, tRNA anticodon UAG pairs with it to deliver an amino acid.' },
-  tRNA:   { icon:'🚗', title:'tRNA + Anticodon', body:'Transfer RNA (tRNA) carries an amino acid on one end and an anticodon on the other. The anticodon is complementary to the mRNA codon.' },
-  AA:     { icon:'⛓️', title:'Amino Acid Added!', body:'Each time a tRNA anticodon matches the codon, its amino acid is added to the growing chain. The chain of amino acids = the PROTEIN!' },
-};
-
-const NT_COLORS = { A:'#69ff47', T:'#ffb74d', G:'#b06aff', C:'#4fc3f7', U:'#ff4fa3' };
-
-// ═══════════════════════════════════════════════════════
-//  TRACK BUILDING
-// ═══════════════════════════════════════════════════════
-const TW = 88; 
-let waypoints, splinePts;
-
-function rawWaypoints(){
-  return [
-    [.13,.18],[.38,.10],[.65,.10],[.87,.18],
-    [.90,.45],[.82,.72],[.60,.85],[.38,.85],
-    [.15,.72],[.10,.45],
-  ].map(([px,py])=>({x:px*W,y:py*H}));
-}
-
-function catmullRom(p0,p1,p2,p3,t){
-  const t2=t*t,t3=t2*t;
-  return {
-    x:.5*(2*p1.x+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
-    y:.5*(2*p1.y+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
-  };
-}
-
-function buildSpline(pts,steps=18){
-  const n=pts.length,out=[];
-  for(let i=0;i<n;i++){
-    const p0=pts[(i-1+n)%n],p1=pts[i],p2=pts[(i+1)%n],p3=pts[(i+2)%n];
-    for(let t=0;t<1;t+=1/steps) out.push(catmullRom(p0,p1,p2,p3,t));
-  }
-  return out;
-}
-
-function buildAll(){ 
-  waypoints=rawWaypoints(); 
-  splinePts=buildSpline(waypoints,18); 
-}
-
-// ═══════════════════════════════════════════════════════
-//  GAME STATE
-// ═══════════════════════════════════════════════════════
-let state='start';
-let player,pickups,obstacles,particles;
-let keys={};
-let score,hp,collected,phase; 
-let startTs,gameTime;
-let infoTimer=0;
-let aminoChain=[];
-
-function nearestSeg(px,py,hint=0){
-  const n=splinePts.length, range=Math.floor(n*.18);
-  let best=Infinity,bestI=hint;
-  for(let d=-range;d<=range;d++){
-    const i=((hint+d)%n+n)%n;
-    const dx=splinePts[i].x-px,dy=splinePts[i].y-py;
-    const d2=dx*dx+dy*dy;
-    if(d2<best){best=d2;bestI=i;}
-  }
-  return {idx:bestI,dist:Math.sqrt(best)};
-}
-
-function initGame(){
-  buildAll();
-  score=0; hp=3; collected=0; phase='transcription';
-  startTs=null; gameTime=0; particles=[]; aminoChain=[];
-
-  const sp=splinePts[0], sp2=splinePts[4]||splinePts[0];
-  player={
-    x:sp.x, y:sp.y,
-    angle:Math.atan2(sp2.y-sp.y,sp2.x-sp.x),
-    speed:0, maxSpeed:5.2, accel:.17, friction:.91,
-    turn:.044, invincible:0, seg:0,
-  };
-
-  spawnPickups();
-  spawnObstacles();
-  updateHUD();
-  buildSeqHUD();
-  document.getElementById('hudPhase').textContent='Nucleus — Transcription';
-  document.getElementById('hudPhase').className='hud-phase-name nucleus';
-}
-
-function currentSeq(){ return phase==='transcription' ? TRANSCRIPTION_SEQ : TRANSLATION_SEQ; }
-
-function spawnPickups(){
-  pickups=[];
-  const seq=currentSeq(), n=splinePts.length;
-  for(let i=0;i<seq.length;i++){
-    const idx=Math.floor(n*.18+(n*.72/seq.length)*i)%n;
-    const pt=splinePts[idx];
-    pickups.push({x:pt.x,y:pt.y,type:seq[i],index:i,collected:false,pulse:Math.random()*Math.PI*2});
-  }
-}
-
-function spawnObstacles(){
-  obstacles=[];
-  const n=splinePts.length, count=7+Math.floor(Math.random()*3);
-  const labels = phase==='transcription'
-    ? ['Nuclease','Histone','Intron']
-    : ['Protease','Ribosome jam','Stop codon!'];
-  for(let i=0;i<count;i++){
-    const idx=Math.floor(n*.08+(n*.84/count)*i+n*.1)%n;
-    const pt=splinePts[idx];
-    const perpI=(idx+1)%n;
-    const dx=splinePts[perpI].x-pt.x, dy=splinePts[perpI].y-pt.y;
-    const len=Math.hypot(dx,dy)||1;
-    const off=(Math.random()-.5)*TW*.45;
-    obstacles.push({
-      x:pt.x+(-dy/len)*off, y:pt.y+(dx/len)*off,
-      r:14+Math.random()*10,
-      label:labels[Math.floor(Math.random()*labels.length)],
-      orbitI:idx, orbitPhase:Math.random()*Math.PI*2,
-      orbitR:18+Math.random()*22,
-      orbitSpeed:(.35+Math.random()*.5)*(Math.random()>.5?1:-1),
-    });
-  }
-}
-
-function buildSeqHUD(){
-  const seq=currentSeq();
-  document.getElementById('hudSeq').innerHTML=seq.map((nt,i)=>
-    `<div class="nt ${nt}" id="chip${i}">${nt}</div>`
-  ).join('');
-}
-
-function updateHUD(){
-  document.getElementById('hudHp').textContent='♥'.repeat(hp)+'♡'.repeat(3-hp);
-  document.getElementById('hudScore').textContent=score;
-  const seq=currentSeq();
-  for(let i=0;i<seq.length;i++){
-    const c=document.getElementById('chip'+i);
-    if(!c) continue;
-    c.className='nt '+seq[i];
-    if(i<collected) c.classList.add('done');
-    else if(i===collected) c.classList.add('next');
-  }
-}
-
-function showInfo(key){
-  const d=INFO[key]||INFO['A_dna'];
-  document.getElementById('infoIcon').textContent=d.icon;
-  document.getElementById('infoTitle').textContent=d.title;
-  document.getElementById('infoBody').textContent=d.body;
-  const box=document.getElementById('infoBox');
-  box.classList.add('show');
-  clearTimeout(window._infoTO);
-  window._infoTO=setTimeout(()=>box.classList.remove('show'),3200);
-}
-
-// ═══════════════════════════════════════════════════════
-//  DRAWING FUNCTIONS
-// ═══════════════════════════════════════════════════════
-function drawBg(){
-  const isNucleus = phase==='transcription';
-  gctx.fillStyle = isNucleus ? '#05101f' : '#04150d';
-  gctx.fillRect(0,0,W,H);
-  gctx.strokeStyle = isNucleus ? 'rgba(79,195,247,.07)' : 'rgba(105,255,71,.06)';
-  gctx.lineWidth=.5;
-  for(let x=0;x<W;x+=50){gctx.beginPath();gctx.moveTo(x,0);gctx.lineTo(x,H);gctx.stroke();}
-  for(let y=0;y<H;y+=50){gctx.beginPath();gctx.moveTo(0,y);gctx.lineTo(W,y);gctx.stroke();}
-}
-
-function drawTrack(){
-  const n=splinePts.length;
-  const isNucleus=phase==='transcription';
-  gctx.strokeStyle=isNucleus?'#0d1b3e':'#0a2e1a';
-  gctx.lineWidth=TW; gctx.lineJoin='round'; gctx.lineCap='round';
-  gctx.beginPath();
-  splinePts.forEach((p,i)=>i===0?gctx.moveTo(p.x,p.y):gctx.lineTo(p.x,p.y));
-  gctx.closePath(); gctx.stroke();
-
-  // Edge dashes
-  gctx.save();
-  gctx.strokeStyle=isNucleus?'rgba(79,195,247,.4)':'rgba(105,255,71,.4)';
-  gctx.setLineDash([10,15]);
-  gctx.stroke();
-  gctx.restore();
-}
-
-function drawPickups(){
-  const t=gameTime;
-  pickups.forEach(pk=>{
-    if(pk.collected) return;
-    const py=pk.y+Math.sin(t*2+pk.pulse)*6;
-    const c=NT_COLORS[pk.type]||'#fff';
-    const isNext=pk.index===collected;
-    gctx.beginPath(); gctx.arc(pk.x,py,isNext?20:15,0,Math.PI*2);
-    gctx.fillStyle=c+(isNext?'66':'22');
-    gctx.strokeStyle=c; gctx.fill(); gctx.stroke();
-    gctx.fillStyle='#fff'; gctx.font='bold 12px Courier Prime'; gctx.textAlign='center';
-    gctx.fillText(pk.type,pk.x,py+5);
-  });
-}
-
-function drawObstacles(){
-  obstacles.forEach(ob=>{
-    const anchor=splinePts[ob.orbitI];
-    const ph=ob.orbitPhase+gameTime*ob.orbitSpeed;
-    ob.x=anchor.x+Math.cos(ph)*ob.orbitR;
-    ob.y=anchor.y+Math.sin(ph)*ob.orbitR;
-    gctx.fillStyle='#ff4fa322'; gctx.strokeStyle='#ff4fa3';
-    gctx.beginPath(); gctx.arc(ob.x,ob.y,ob.r,0,Math.PI*2); gctx.fill(); gctx.stroke();
-  });
-}
-
-function drawPlayer(){
-  const {x,y,angle,invincible}=player;
-  if(invincible>0 && Math.floor(Date.now()/80)%2===0) return;
-  gctx.save();
-  gctx.translate(x,y); gctx.rotate(angle+Math.PI/2);
-  gctx.fillStyle=phase==='transcription'?'#4fc3f7':'#69ff47';
-  gctx.beginPath(); gctx.moveTo(0,-15); gctx.lineTo(10,10); gctx.lineTo(-10,10); gctx.closePath(); gctx.fill();
-  gctx.restore();
-}
-
-function drawParticles(){
-  pctx.clearRect(0,0,W,H);
-  particles.forEach(p=>{
-    pctx.globalAlpha=p.life; pctx.fillStyle=p.color;
-    pctx.beginPath(); pctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2); pctx.fill();
-  });
-}
-
-function burst(x,y,color,n=18){
-  for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2, s=2+Math.random()*5;
-    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color,r:3+Math.random()*4});
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-//  CORE LOOP
-// ═══════════════════════════════════════════════════════
-function update(){
-  if(state!=='playing') return;
-  if(!startTs) startTs=Date.now();
-  gameTime=(Date.now()-startTs)/1000;
-
-  // Movement
-  let turn=0;
-  if(keys['ArrowLeft']||keys['a']) turn=-1;
-  if(keys['ArrowRight']||keys['d']) turn=1;
-  player.angle += turn*player.turn;
-
-  if(keys['ArrowUp']||keys['w']) player.speed+=player.accel;
-  player.speed*=player.friction;
-  player.x+=Math.cos(player.angle)*player.speed;
-  player.y+=Math.sin(player.angle)*player.speed;
-
-  // Collision Pickups
-  const seq=currentSeq();
-  pickups.forEach(pk=>{
-    if(!pk.collected && Math.hypot(player.x-pk.x, player.y-pk.y)<30){
-      if(pk.index===collected){
-        pk.collected=true; collected++; score+=100;
-        burst(pk.x,pk.y,NT_COLORS[pk.type]);
-        showInfo(phase==='transcription'?pk.type+'_dna': (collected%3===0?'AA':'tRNA'));
-        updateHUD();
-      }
-    }
-  });
-
-  // Collision Obstacles
-  if(player.invincible>0) player.invincible--;
-  else {
-    obstacles.forEach(ob=>{
-      if(Math.hypot(player.x-ob.x, player.y-ob.y)<ob.r+10){
-        hp--; player.invincible=60; player.speed*=-0.5;
-        document.getElementById('dmgFlash').classList.add('on');
-        setTimeout(()=>document.getElementById('dmgFlash').classList.remove('on'),150);
-        updateHUD();
-        if(hp<=0) { state='dead'; document.getElementById('deadScreen').classList.remove('hidden'); }
-      }
-    });
-  }
-
-  // Phase Finish
-  if(collected >= seq.length){
-    if(Math.hypot(player.x-splinePts[0].x, player.y-splinePts[0].y)<50){
-      if(phase==='transcription') {
-        state='transition';
-        document.getElementById('phaseBanner').classList.remove('hidden');
-        setTimeout(()=>{
-          phase='translation'; collected=0; spawnPickups(); spawnObstacles(); buildSeqHUD(); updateHUD();
-          document.getElementById('hudPhase').textContent='Cytoplasm — Translation';
-          document.getElementById('hudPhase').className='hud-phase-name cytoplasm';
-          document.getElementById('phaseBanner').classList.add('hidden');
-          state='playing';
-        },3000);
-      } else {
-        state='win';
-        document.getElementById('winScreen').classList.remove('hidden');
-        document.getElementById('wsScore').textContent=score;
-        document.getElementById('wsTime').textContent=Math.floor(gameTime)+'s';
-        const chain=document.getElementById('winChain');
-        chain.innerHTML=AMINO_ACIDS.map(aa=>`<div class="win-aa">${aa}</div>`).join('');
-      }
-    }
-  }
-
-  particles=particles.filter(p=>{
-    p.x+=p.vx; p.y+=p.vy; p.life-=.02; return p.life>0;
-  });
-}
-
-function loop(){
-  update();
-  drawBg();
-  drawTrack();
-  drawPickups();
-  drawObstacles();
-  drawPlayer();
-  drawParticles();
-  requestAnimationFrame(loop);
-}
-
-// ═══════════════════════════════════════════════════════
-//  INPUTS & START
-// ═══════════════════════════════════════════════════════
-window.addEventListener('keydown', e=>keys[e.key.toLowerCase()]=true);
-window.addEventListener('keyup', e=>keys[e.key.toLowerCase()]=false);
-
-document.getElementById('startBtn').onclick = () => {
-  document.getElementById('startScreen').classList.add('hidden');
-  document.getElementById('hud').classList.remove('hidden');
-  initGame();
-  state='playing';
-};
-
-document.getElementById('retryBtn').onclick = () => location.reload();
-document.getElementById('winBtn').onclick = () => location.reload();
-
 resize();
 window.addEventListener('resize', resize);
-loop();
+ 
+// ─── Constants ────────────────────────────────────────────────────────────────
+const DNA_SEQUENCE  = ['A','T','G','C','A','T','G','C'];
+const RNA_PAIR      = { A:'U', T:'A', G:'C', C:'G' };
+const MRNA_SEQUENCE = DNA_SEQUENCE.map(b => RNA_PAIR[b]);  // U A C G U A C G
+ 
+const CODONS = [
+  { codon:'UAU', anticodon:'AUA', aa:'TYR' },
+  { codon:'ACG', anticodon:'UGC', aa:'THR' },
+  { codon:'GGC', anticodon:'CCG', aa:'GLY' },
+  { codon:'CAA', anticodon:'GUU', aa:'GLN' },
+  { codon:'UGU', anticodon:'ACA', aa:'CYS' },
+];
+const ALL_DECOYS = ['GCA','UCU','AGG','CUU','GAA','UUG','CCU','AGA','UAA','GGA'];
+ 
+// ─── State ────────────────────────────────────────────────────────────────────
+let gameState = 'menu';   // menu | playing | transition | win | gameover
+let level     = 1;
+let hp        = 100;
+let score     = 0;
+let dnaIndex  = 0;        // which nucleotide to collect next
+let codonIdx  = 0;        // which codon to match next
+let mRNABuilt = [];
+let aminoChain= [];
+ 
+// ─── Input ────────────────────────────────────────────────────────────────────
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+ 
+// ─── Player ───────────────────────────────────────────────────────────────────
+const player = {
+  x:0, y:0, angle:0, speed:0,
+  vx:0, vy:0, trail:[],
+  flashTimer:0,
+  label:'', color:'',
+  W:38, H:19,
+  MAX_SPEED:4.4, ACCEL:0.24, FRICTION:0.86, TURN:0.038,
+};
+ 
+function resetPlayer(lv) {
+  const W = canvas.width, H = canvas.height;
+  player.x     = 130;
+  player.y     = H / 2;
+  player.angle = 0;
+  player.speed = 0;
+  player.vx    = 0;
+  player.vy    = 0;
+  player.trail = [];
+  player.flashTimer = 0;
+  player.label = lv === 1 ? 'RNA POLYMERASE' : 'RIBOSOME';
+  player.color = lv === 1 ? '#00c8ff' : '#00ff88';
+}
+ 
+// ─── Nucleotides (Level 1) ────────────────────────────────────────────────────
+let nucleotides = [];
+ 
+function spawnNucleotides() {
+  nucleotides = [];
+  const W = canvas.width, H = canvas.height;
+  const cols = 4, rows = 2;
+  const marginX = 160, marginY = 130;
+  for (let i = 0; i < DNA_SEQUENCE.length; i++) {
+    const col = i % cols, row = Math.floor(i / cols);
+    nucleotides.push({
+      x: marginX + col * (W - marginX * 2) / (cols - 1),
+      y: marginY + row * (H - marginY * 2 - 40) / (rows - 1),
+      base:  DNA_SEQUENCE[i],
+      rna:   RNA_PAIR[DNA_SEQUENCE[i]],
+      r:     28,
+      phase: Math.random() * Math.PI * 2,
+      collected: false,
+    });
+  }
+}
+ 
+// ─── tRNAs (Level 2) ──────────────────────────────────────────────────────────
+let tRNAs = [];
+ 
+function spawnTRNAs() {
+  tRNAs = [];
+  const W = canvas.width, H = canvas.height;
+  const correct = CODONS[codonIdx];
+  // pick 2 unique decoys
+  const decoys = [];
+  for (const d of ALL_DECOYS) {
+    if (d !== correct.anticodon && !decoys.includes(d)) decoys.push(d);
+    if (decoys.length === 2) break;
+  }
+  const pool = [
+    { anticodon: correct.anticodon, isCorrect: true,  aa: correct.aa },
+    { anticodon: decoys[0],         isCorrect: false, aa: '???' },
+    { anticodon: decoys[1],         isCorrect: false, aa: '???' },
+  ].sort(() => Math.random() - 0.5);
+ 
+  pool.forEach((t, i) => {
+    tRNAs.push({
+      x: 160 + i * (W - 320) / (pool.length - 1),
+      y: 160 + Math.random() * (H - 320),
+      anticodon:  t.anticodon,
+      isCorrect:  t.isCorrect,
+      aa:         t.aa,
+      r:          30,
+      phase:      Math.random() * Math.PI * 2,
+      collected:  false,
+    });
+  });
+}
+ 
+// ─── Particles ────────────────────────────────────────────────────────────────
+let particles = [];
+ 
+function burst(x, y, color, n = 18) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 1.8 + Math.random() * 3.5;
+    particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s,
+      r: 2 + Math.random() * 3, life: 1,
+      decay: 0.02 + Math.random() * 0.02, color, isRing: false });
+  }
+}
+function ring(x, y, color) {
+  particles.push({ x, y, vx:0, vy:0, r:0, maxR:64,
+    life:1, decay:0.04, color, isRing:true });
+}
+ 
+// ─── Floating texts (DOM, auto-remove) ───────────────────────────────────────
+function floatText(x, y, text, color) {
+  const el = document.createElement('div');
+  el.className = 'ftxt';
+  el.textContent = text;
+  el.style.cssText = `left:${x}px; top:${y - 20}px; color:${color};`;
+  document.getElementById('wrap').appendChild(el);
+  setTimeout(() => el.remove(), 1150);
+}
+ 
+function scorePopup(x, y, val) {
+  const el = document.createElement('div');
+  el.className = 'spop';
+  el.textContent = '+' + val;
+  el.style.cssText = `left:${x - 18}px; top:${y - 28}px; color:#ffee66;`;
+  document.getElementById('wrap').appendChild(el);
+  setTimeout(() => el.remove(), 860);
+}
+ 
+// ─── Bio-Log ──────────────────────────────────────────────────────────────────
+let logClear;
+function log(msg, type = '') {
+  const box = document.getElementById('biolog');
+  const el  = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  box.appendChild(el);
+  // keep max 4 visible
+  while (box.children.length > 4) box.removeChild(box.firstChild);
+  clearTimeout(logClear);
+  logClear = setTimeout(() => {
+    const first = box.firstChild;
+    if (first) {
+      first.style.animation = 'tOut 0.35s ease forwards';
+      setTimeout(() => first && first.remove(), 360);
+    }
+  }, 4500);
+}
+ 
+// ─── HUD ─────────────────────────────────────────────────────────────────────
+function updateHUD() {
+  const safeHp = Math.max(0, Math.round(hp));
+  document.getElementById('hpNum').textContent   = safeHp;
+  document.getElementById('hpFill').style.width  = safeHp + '%';
+  document.getElementById('scoreNum').textContent = score;
+ 
+  const phaseLbl  = document.getElementById('phaseLbl');
+  const targetLbl = document.getElementById('targetLbl');
+  const progFill  = document.getElementById('progFill');
+ 
+  if (level === 1) {
+    phaseLbl.textContent  = 'LEVEL 1 · TRANSCRIPTION · NUCLEUS';
+    if (dnaIndex < DNA_SEQUENCE.length) {
+      const b = DNA_SEQUENCE[dnaIndex];
+      targetLbl.textContent = `COLLECT DNA NUCLEOTIDE: ${b}  →  mRNA ADDS: ${RNA_PAIR[b]}`;
+    } else {
+      targetLbl.textContent = 'mRNA STRAND COMPLETE!';
+    }
+    progFill.style.width = (mRNABuilt.length / DNA_SEQUENCE.length * 100) + '%';
+  } else {
+    phaseLbl.textContent = 'LEVEL 2 · TRANSLATION · CYTOPLASM';
+    if (codonIdx < CODONS.length) {
+      const c = CODONS[codonIdx];
+      targetLbl.textContent = `CODON: ${c.codon}  ›  COLLECT tRNA ANTICODON: ${c.anticodon}`;
+    } else {
+      targetLbl.textContent = 'PROTEIN SYNTHESISED!';
+    }
+    progFill.style.width = (aminoChain.length / CODONS.length * 100) + '%';
+  }
+}
+ 
+// ─── Background ───────────────────────────────────────────────────────────────
+const bgStars = [];
+function initStars() {
+  bgStars.length = 0;
+  const W = canvas.width, H = canvas.height;
+  for (let i = 0; i < 130; i++) {
+    bgStars.push({ x: Math.random()*W, y: Math.random()*H,
+      r: Math.random()*1.3+0.2, phase: Math.random()*Math.PI*2,
+      speed: 0.5 + Math.random()*0.8 });
+  }
+}
+ 
+function drawBackground(t) {
+  const W = canvas.width, H = canvas.height;
+  const isN = level === 1;
+ 
+  ctx.fillStyle = isN ? '#000d1f' : '#001508';
+  ctx.fillRect(0, 0, W, H);
+ 
+  // grid
+  ctx.strokeStyle = isN ? 'rgba(0,80,200,0.12)' : 'rgba(0,160,60,0.10)';
+  ctx.lineWidth = 0.5;
+  const gs = 58;
+  for (let x = 0; x < W; x += gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+ 
+  // stars
+  bgStars.forEach(s => {
+    const a = 0.1 + 0.12 * Math.sin(t * s.speed + s.phase);
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fillStyle = isN ? `rgba(100,190,255,${a})` : `rgba(100,255,160,${a})`;
+    ctx.fill();
+  });
+ 
+  // watermark
+  ctx.save();
+  ctx.font = `900 ${Math.min(W * 0.13, 106)}px Orbitron, monospace`;
+  ctx.fillStyle = isN ? 'rgba(0,90,200,0.035)' : 'rgba(0,180,70,0.035)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(isN ? 'NUCLEUS' : 'CYTOPLASM', W/2, H/2);
+  ctx.restore();
+ 
+  // zone label top-left
+  ctx.save();
+  ctx.font = 'bold 11px Orbitron, monospace';
+  ctx.fillStyle = isN ? 'rgba(0,160,255,0.35)' : 'rgba(0,220,100,0.35)';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText('[ ' + (isN ? 'NUCLEUS' : 'CYTOPLASM') + ' ]', 14, 64);
+  ctx.restore();
+}
+ 
+// ─── Draw Trail ──────────────────────────────────────────────────────────────
+function drawTrail() {
+  const tr = player.trail;
+  if (tr.length < 2) return;
+  for (let i = 1; i < tr.length; i++) {
+    const prog = i / tr.length;
+    ctx.beginPath();
+    ctx.moveTo(tr[i-1].x, tr[i-1].y);
+    ctx.lineTo(tr[i].x,   tr[i].y);
+    ctx.strokeStyle = player.color + Math.floor(prog * 70).toString(16).padStart(2,'0');
+    ctx.lineWidth   = prog * 4;
+    ctx.stroke();
+  }
+}
+ 
+// ─── Draw Player ─────────────────────────────────────────────────────────────
+function drawPlayer() {
+  const { x, y, angle, W: pw, H: ph, color, label, flashTimer } = player;
+  const c = flashTimer > 0 ? '#ff3366' : color;
+ 
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+ 
+  ctx.shadowColor = c;
+  ctx.shadowBlur  = 22;
+ 
+  // body
+  ctx.beginPath();
+  ctx.roundRect(-pw/2, -ph/2, pw, ph, 5);
+  ctx.fillStyle   = c + '1f';
+  ctx.strokeStyle = c;
+  ctx.lineWidth   = 2.2;
+  ctx.fill();
+  ctx.stroke();
+ 
+  // centre stripe
+  ctx.beginPath();
+  ctx.moveTo(-pw/2 + 7, 0); ctx.lineTo(pw/2 - 10, 0);
+  ctx.strokeStyle = c + '66'; ctx.lineWidth = 1; ctx.stroke();
+ 
+  // nose
+  ctx.beginPath();
+  ctx.moveTo(pw/2 + 9, 0);
+  ctx.lineTo(pw/2 - 2, -7);
+  ctx.lineTo(pw/2 - 2,  7);
+  ctx.closePath();
+  ctx.fillStyle = c;
+  ctx.fill();
+ 
+  ctx.shadowBlur = 0;
+  ctx.restore();
+ 
+  // label above
+  ctx.save();
+  ctx.font = '9px Orbitron, monospace';
+  ctx.fillStyle   = color;
+  ctx.textAlign   = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(label, x, y - ph/2 - 7);
+  ctx.restore();
+}
+ 
+// ─── Draw Nucleotides ─────────────────────────────────────────────────────────
+function drawNucleotides(t) {
+  nucleotides.forEach((n, i) => {
+    if (n.collected) return;
+    const isNext = (i === dnaIndex);
+    const alpha  = isNext ? 1.0 : 0.32;
+    const scale  = isNext ? 1 + 0.1 * Math.sin(t * 3 + n.phase) : 0.82;
+ 
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(n.x, n.y);
+    ctx.scale(scale, scale);
+ 
+    if (isNext) {
+      // outer pulse ring
+      const pulse = 0.35 + 0.35 * Math.sin(t * 3.5 + n.phase);
+      ctx.beginPath(); ctx.arc(0, 0, n.r + 14, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(0,180,255,${pulse * 0.5})`;
+      ctx.lineWidth = 2; ctx.stroke();
+    }
+ 
+    // body
+    ctx.beginPath(); ctx.arc(0, 0, n.r, 0, Math.PI*2);
+    ctx.fillStyle   = '#001020';
+    ctx.strokeStyle = isNext ? '#00c8ff' : '#003355';
+    ctx.lineWidth   = isNext ? 2.5 : 1.5;
+    ctx.shadowColor = '#0088ff';
+    ctx.shadowBlur  = isNext ? 18 : 5;
+    ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+ 
+    // letter
+    ctx.font = `bold ${isNext ? 18 : 14}px Orbitron, monospace`;
+    ctx.fillStyle   = isNext ? '#00e0ff' : '#004466';
+    ctx.textAlign   = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(n.base, 0, 0);
+ 
+    ctx.restore();
+ 
+    // label below
+    if (isNext) {
+      ctx.save();
+      ctx.globalAlpha = 0.65;
+      ctx.font = '8px Share Tech Mono, monospace';
+      ctx.fillStyle = '#3399bb';
+      ctx.textAlign = 'center';
+      ctx.fillText('DNA NUCLEOTIDE', n.x, n.y + n.r + 14);
+      ctx.restore();
+    }
+  });
+}
+ 
+// ─── Draw mRNA strip ─────────────────────────────────────────────────────────
+function drawMRNAStrip() {
+  if (mRNABuilt.length === 0) return;
+  const bw = 32, gap = 5;
+  const W  = canvas.width;
+  const sx = 14, sy = canvas.height - 50;
+  ctx.save();
+  ctx.font = '9px Orbitron, monospace';
+  ctx.fillStyle = 'rgba(255,200,0,0.45)';
+  ctx.textAlign = 'left';
+  ctx.fillText('mRNA STRAND:', sx, sy - 14);
+ 
+  mRNABuilt.forEach((base, i) => {
+    const bx = sx + 100 + i * (bw + gap);
+    if (bx + bw > W - 10) return; // don't overflow
+    ctx.beginPath();
+    ctx.roundRect(bx, sy - 13, bw, 22, 3);
+    ctx.fillStyle   = '#111300';
+    ctx.strokeStyle = '#ffcc00';
+    ctx.shadowColor = '#ffcc00'; ctx.shadowBlur = 5;
+    ctx.lineWidth   = 1.5;
+    ctx.fill(); ctx.stroke();
+    ctx.shadowBlur  = 0;
+ 
+    ctx.font = 'bold 12px Orbitron, monospace';
+    ctx.fillStyle    = '#ffcc00';
+    ctx.textAlign    = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(base, bx + bw/2, sy - 2);
+  });
+  ctx.restore();
+}
+ 
+// ─── Draw tRNAs ──────────────────────────────────────────────────────────────
+function drawTRNAs(t) {
+  tRNAs.forEach(tr => {
+    if (tr.collected) return;
+    const sc = 1 + 0.07 * Math.sin(t * 2.8 + tr.phase);
+    const c  = tr.isCorrect ? '#00ff88' : '#ff3366';
+ 
+    ctx.save();
+    ctx.translate(tr.x, tr.y);
+    ctx.scale(sc, sc);
+ 
+    // pentagon star (5-point)
+    const spikes = 5, ro = tr.r, ri = tr.r * 0.42;
+    ctx.beginPath();
+    for (let i = 0; i < spikes * 2; i++) {
+      const a = (i * Math.PI / spikes) - Math.PI / 2;
+      const r = (i % 2 === 0) ? ro : ri;
+      const px = Math.cos(a) * r, py = Math.sin(a) * r;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle   = tr.isCorrect ? '#001a0a' : '#1a0008';
+    ctx.strokeStyle = c;
+    ctx.lineWidth   = 2;
+    ctx.shadowColor = c; ctx.shadowBlur = 14;
+    ctx.fill(); ctx.stroke();
+    ctx.shadowBlur  = 0;
+ 
+    // anticodon label inside
+    ctx.font = 'bold 10px Orbitron, monospace';
+    ctx.fillStyle    = c;
+    ctx.textAlign    = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(tr.anticodon, 0, 0);
+ 
+    ctx.restore();
+ 
+    // tRNA label below
+    ctx.save();
+    ctx.font = '8px Share Tech Mono, monospace';
+    ctx.fillStyle = tr.isCorrect ? '#226644' : '#551133';
+    ctx.textAlign = 'center';
+    ctx.fillText('tRNA ANTICODON', tr.x, tr.y + tr.r + 15);
+    ctx.restore();
+  });
+}
+ 
+// ─── Draw Codon Track ────────────────────────────────────────────────────────
+function drawCodonTrack() {
+  const W  = canvas.width, H = canvas.height;
+  const bw = 104, bh = 28, gap = 8;
+  const totalW = CODONS.length * (bw + gap) - gap;
+  const sx = W / 2 - totalW / 2;
+  const sy = H - 48;
+ 
+  ctx.save();
+  ctx.font = '8px Orbitron, monospace';
+  ctx.fillStyle = 'rgba(0,220,100,0.35)';
+  ctx.textAlign = 'left';
+  ctx.fillText('mRNA CODONS →', sx, sy - 15);
+ 
+  CODONS.forEach((cd, i) => {
+    const bx   = sx + i * (bw + gap);
+    const done = i < codonIdx;
+    const act  = i === codonIdx;
+    const col  = act ? '#ffff00' : done ? '#00ff88' : '#1a3322';
+ 
+    ctx.shadowColor = act ? '#ffff00' : done ? '#00ff88' : 'transparent';
+    ctx.shadowBlur  = act ? 14 : done ? 6 : 0;
+    ctx.fillStyle   = act ? '#1e1e00' : done ? '#001a08' : '#040e06';
+    ctx.strokeStyle = col;
+    ctx.lineWidth   = act ? 2.5 : 1.5;
+    ctx.beginPath(); ctx.roundRect(bx, sy - 6, bw, bh, 4);
+    ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+ 
+    ctx.font = act ? 'bold 13px Orbitron' : '11px Share Tech Mono';
+    ctx.fillStyle    = col;
+    ctx.textAlign    = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(cd.codon, bx + bw/2, sy + bh/2 - 5);
+ 
+    ctx.font = '7px Share Tech Mono';
+    ctx.fillStyle = act ? '#888800' : done ? '#226633' : '#1a2e1a';
+    ctx.fillText('CODON', bx + bw/2, sy + bh - 3);
+  });
+  ctx.restore();
+}
+ 
+// ─── Draw Amino Chain ────────────────────────────────────────────────────────
+function drawAminoChain() {
+  if (aminoChain.length === 0) return;
+  const r = 16, spacing = 38;
+ 
+  for (let i = 0; i < aminoChain.length; i++) {
+    const bx = player.x - 55 - i * spacing;
+    const by = player.y;
+ 
+    // connector line
+    if (i > 0) {
+      ctx.beginPath();
+      ctx.moveTo(bx + spacing, by); ctx.lineTo(bx + r + 1, by);
+      ctx.strokeStyle = '#00ff8844'; ctx.lineWidth = 3; ctx.stroke();
+    }
+ 
+    // circle
+    ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI*2);
+    ctx.fillStyle   = '#001a08';
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth   = 1.8;
+    ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 8;
+    ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+ 
+    // label
+    ctx.font = '8px Orbitron, monospace';
+    ctx.fillStyle    = '#00ff88';
+    ctx.textAlign    = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(aminoChain[i], bx, by);
+  }
+ 
+  // chain label
+  const midX = player.x - 55 - (aminoChain.length - 1) * spacing / 2;
+  ctx.save();
+  ctx.font = '8px Share Tech Mono';
+  ctx.fillStyle = 'rgba(0,255,136,0.28)';
+  ctx.textAlign = 'center';
+  ctx.fillText('AMINO ACID CHAIN (PROTEIN)', midX, player.y + r + 14);
+  ctx.restore();
+}
+ 
+// ─── Draw Particles ──────────────────────────────────────────────────────────
+function drawParticles() {
+  particles.forEach(p => {
+    if (p.isRing) {
+      const cr = (1 - p.life) * p.maxR;
+      ctx.beginPath(); ctx.arc(p.x, p.y, cr, 0, Math.PI*2);
+      const a = Math.floor(p.life * 180).toString(16).padStart(2,'0');
+      ctx.strokeStyle = p.color + a;
+      ctx.lineWidth   = 3 * p.life;
+      ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI*2);
+      const a = Math.floor(p.life * 200).toString(16).padStart(2,'0');
+      ctx.fillStyle = p.color + a;
+      ctx.fill();
+    }
+  });
+}
+ 
+// ─── Collision helper ────────────────────────────────────────────────────────
+function dist2(ax, ay, bx, by) {
+  return Math.hypot(ax - bx, ay - by);
+}
+ 
+// ─── Collision checks ────────────────────────────────────────────────────────
+function checkCollisions() {
+  if (level === 1) {
+    // only the current target nucleotide is active
+    const n = nucleotides[dnaIndex];
+    if (!n || n.collected) return;
+    if (dist2(player.x, player.y, n.x, n.y) < n.r + 16) {
+      n.collected = true;
+      mRNABuilt.push(n.rna);
+      score += 100;
+      burst(n.x, n.y, '#00aaff');
+      ring(n.x, n.y, '#0088ff');
+      scorePopup(n.x, n.y, 100);
+ 
+      if (n.base === 'A') {
+        floatText(n.x, n.y, 'A → U  (Uracil!)', '#00e0ff');
+        log('DNA Adenine (A) → mRNA Uracil (U). In RNA, Uracil replaces Thymine!', '');
+      } else {
+        floatText(n.x, n.y, `${n.base} → ${n.rna}`, '#00bbff');
+        log(`DNA ${n.base} → mRNA ${n.rna}. Complementary base pairing by RNA Polymerase.`, '');
+      }
+      log(`mRNA strand so far: ${mRNABuilt.join(' · ')}`, '');
+ 
+      dnaIndex++;
+      if (dnaIndex >= DNA_SEQUENCE.length) {
+        log('mRNA strand COMPLETE! Threading through the Nuclear Pore…', 'success');
+        gameState = 'transition';
+        setTimeout(doTransition, 550);
+      }
+    }
+  } else {
+    tRNAs.forEach(tr => {
+      if (tr.collected) return;
+      if (dist2(player.x, player.y, tr.x, tr.y) < tr.r + 17) {
+        tr.collected = true;
+        if (tr.isCorrect) {
+          const cd = CODONS[codonIdx];
+          aminoChain.push(cd.aa);
+          score += 250;
+          burst(tr.x, tr.y, '#00ff88', 22);
+          ring(tr.x, tr.y, '#00ff88');
+          scorePopup(tr.x, tr.y, 250);
+          floatText(tr.x, tr.y, `${cd.aa} added!`, '#00ff88');
+          log(`✓ Anticodon ${cd.anticodon} matched Codon ${cd.codon}. Amino acid ${cd.aa} added to the protein chain!`, 'success');
+          codonIdx++;
+          if (codonIdx >= CODONS.length) {
+            gameState = 'win';
+            setTimeout(doWin, 700);
+          } else {
+            spawnTRNAs();
+            log(`Ribosome moves to next Codon: ${CODONS[codonIdx].codon}. Find the correct tRNA Anticodon!`, '');
+          }
+        } else {
+          hp = Math.max(0, hp - 20);
+          player.flashTimer = 16;
+          burst(tr.x, tr.y, '#ff3366', 12);
+          floatText(tr.x, tr.y, 'WRONG! −20 HP', '#ff3366');
+          log(`✗ Anticodon ${tr.anticodon} does NOT match Codon ${CODONS[codonIdx].codon}. mRNA Integrity −20!`, 'warn');
+          spawnTRNAs();
+          if (hp <= 0) { gameState = 'gameover'; setTimeout(doGameOver, 500); }
+        }
+      }
+    });
+  }
+}
+ 
+// ─── Game loop ────────────────────────────────────────────────────────────────
+function handleInput(dt) {
+  const left  = keys['ArrowLeft']  || keys['KeyA'];
+  const right = keys['ArrowRight'] || keys['KeyD'];
+  const up    = keys['ArrowUp']    || keys['KeyW'];
+  const down  = keys['ArrowDown']  || keys['KeyS'];
+ 
+  if (left)  player.angle -= player.TURN * dt;
+  if (right) player.angle += player.TURN * dt;
+ 
+  if (up)        player.speed = Math.min(player.speed + player.ACCEL * dt, player.MAX_SPEED);
+  else if (down) player.speed = Math.max(player.speed - player.ACCEL * dt, -player.MAX_SPEED * 0.45);
+  else           player.speed *= Math.pow(player.FRICTION, dt);
+ 
+  if (Math.abs(player.speed) < 0.005) player.speed = 0;
+ 
+  player.vx = Math.cos(player.angle) * player.speed;
+  player.vy = Math.sin(player.angle) * player.speed;
+  player.x += player.vx * dt;
+  player.y += player.vy * dt;
+ 
+  // soft boundary
+  const W = canvas.width, H = canvas.height, pad = 22;
+  if (player.x < pad)   { player.x = pad;   player.speed *= -0.3; }
+  if (player.x > W-pad) { player.x = W-pad; player.speed *= -0.3; }
+  if (player.y < pad)   { player.y = pad;   player.speed *= -0.3; }
+  if (player.y > H-pad) { player.y = H-pad; player.speed *= -0.3; }
+ 
+  player.trail.push({ x: player.x, y: player.y });
+  if (player.trail.length > 24) player.trail.shift();
+}
+ 
+function updateParticles() {
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.95; p.vy *= 0.95;
+    p.life -= p.decay;
+  });
+}
+ 
+let lastTime = 0;
+function gameLoop(ts) {
+  if (gameState !== 'playing') return;
+  const dt = Math.min((ts - lastTime) / 16.667, 3.0);
+  lastTime  = ts;
+  const t   = ts / 1000;
+ 
+  handleInput(dt);
+  updateParticles();
+  if (player.flashTimer > 0) player.flashTimer -= dt;
+  checkCollisions();
+  updateHUD();
+ 
+  // RENDER
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBackground(t);
+ 
+  if (level === 1) {
+    drawNucleotides(t);
+    drawMRNAStrip();
+  } else {
+    drawTRNAs(t);
+    drawCodonTrack();
+    drawAminoChain();
+  }
+ 
+  drawParticles();
+  drawTrail();
+  drawPlayer();
+ 
+  requestAnimationFrame(gameLoop);
+}
+ 
+// ─── Screen transitions ───────────────────────────────────────────────────────
+function doTransition() {
+  document.getElementById('mrnaBand').textContent = mRNABuilt.join('  ');
+  document.getElementById('transScreen').classList.add('show');
+}
+ 
+document.getElementById('enterCytoBtn').addEventListener('click', () => {
+  document.getElementById('transScreen').classList.remove('show');
+  level    = 2;
+  codonIdx = 0;
+  aminoChain = [];
+  resetPlayer(2);
+  spawnTRNAs();
+  log('You are now the RIBOSOME in the Cytoplasm!', 'success');
+  log(`Read mRNA codons. Collect the correct tRNA Anticodon to add each Amino Acid.`, '');
+  log(`First Codon: ${CODONS[0].codon}  →  find Anticodon: ${CODONS[0].anticodon}`, '');
+  gameState = 'playing';
+  lastTime  = performance.now();
+  requestAnimationFrame(gameLoop);
+});
+ 
+function doWin() {
+  const end = document.getElementById('endScreen');
+  document.getElementById('endTitle').textContent = 'PROTEIN COMPLETE!';
+  document.getElementById('endTitle').style.color = '#00ff88';
+  document.getElementById('endTitle').style.textShadow = '0 0 40px #00ff8866';
+  document.getElementById('endBody').innerHTML =
+    `You successfully completed the Central Dogma of Molecular Biology:<br><br>
+    <strong style="color:#00c8ff">DNA → mRNA</strong> (Transcription in the Nucleus)<br>
+    <strong style="color:#00ff88">mRNA → Protein</strong> (Translation in the Cytoplasm)<br><br>
+    <span style="color:#ffcc00;font-family:Orbitron,monospace;font-size:13px;letter-spacing:2px">${aminoChain.join(' → ')}</span><br><br>
+    <span style="color:#446655;font-size:11px">FINAL SCORE: ${score}</span>`;
+  document.getElementById('endBtn').className = 'btn g';
+  end.classList.remove('hidden');
+}
+ 
+function doGameOver() {
+  const end = document.getElementById('endScreen');
+  document.getElementById('endTitle').textContent = 'mRNA DEGRADED';
+  document.getElementById('endTitle').style.color = '#ff3366';
+  document.getElementById('endTitle').style.textShadow = '0 0 40px #ff336644';
+  document.getElementById('endBody').innerHTML =
+    `Too many incorrect tRNA Anticodon matches caused the mRNA to collapse.<br>Protein synthesis failed.<br><br>
+    <span style="color:#553344;font-size:11px">SCORE: ${score}</span>`;
+  document.getElementById('endBtn').className = 'btn r';
+  end.classList.remove('hidden');
+}
+ 
+// ─── Start ────────────────────────────────────────────────────────────────────
+document.getElementById('startBtn').addEventListener('click', () => {
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('hud').style.display = 'flex';
+ 
+  // reset everything
+  level      = 1;
+  hp         = 100;
+  score      = 0;
+  dnaIndex   = 0;
+  codonIdx   = 0;
+  mRNABuilt  = [];
+  aminoChain = [];
+  particles  = [];
+ 
+  initStars();
+  resetPlayer(1);
+  spawnNucleotides();
+ 
+  log('TRANSCRIPTION INITIATED. You are RNA Polymerase inside the Nucleus.', '');
+  log('DNA Nucleotides are labelled on screen. Collect them in order!', '');
+  log('Remember: DNA Adenine (A) → mRNA Uracil (U). Thymine is NOT used in RNA!', 'warn');
+ 
+  gameState = 'playing';
+  lastTime  = performance.now();
+  requestAnimationFrame(gameLoop);
+});
+ 
+// ─── Static preview render ────────────────────────────────────────────────────
+(function preview() {
+  ctx.fillStyle = '#000d1f';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+})();
 </script>
 </body>
 </html>
-```
