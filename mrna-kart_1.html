@@ -642,12 +642,47 @@ function drawFinishLine() {
   gctx.fillText('RIBOSOME', p1.x, p1.y - TRACK_WIDTH/2 - 10);
 }
 
-function drawBackground() {
-  gctx.fillStyle = '#04060f';
-  gctx.fillRect(0,0,W,H);
+function drawDNA(t) {
+  const centerX = W / 2;
+  const amplitude = 120;
+  const spacing = 14;
 
-  // Subtle grid
-  gctx.strokeStyle = 'rgba(26,42,94,0.25)';
+  for (let i = 0; i < H; i += spacing) {
+    const wave = Math.sin((i * 0.02) + t * 2) * amplitude;
+
+    const x1 = centerX + wave;
+    const x2 = centerX - wave;
+
+    // Backbone lines
+    gctx.strokeStyle = 'rgba(176,106,255,0.25)';
+    gctx.lineWidth = 2;
+
+    gctx.beginPath();
+    gctx.moveTo(x1, i);
+    gctx.lineTo(x2, i);
+    gctx.stroke();
+
+    // Base pairs glow
+    gctx.fillStyle = 'rgba(0,255,170,0.4)';
+    gctx.beginPath();
+    gctx.arc(x1, i, 2, 0, Math.PI * 2);
+    gctx.fill();
+
+    gctx.beginPath();
+    gctx.arc(x2, i, 2, 0, Math.PI * 2);
+    gctx.fill();
+  }
+}
+
+function drawBackground() {
+gctx.fillStyle = '#04060f';
+gctx.fillRect(0,0,W,H);
+
+// ADD THIS LINE 👇
+drawDNA(gameTime || 0);
+
+// Subtle grid
+gctx.strokeStyle = 'rgba(26,42,94,0.25)';
   gctx.lineWidth = 0.5;
   for (let x=0; x<W; x+=48) {
     gctx.beginPath(); gctx.moveTo(x,0); gctx.lineTo(x,H); gctx.stroke();
@@ -670,29 +705,26 @@ function drawPickups(t) {
     if (pk.collected) continue;
     const py = pk.y + Math.sin(t*2 + pk.pulse)*6;
     const c = NT_COLORS[pk.type];
-    const isNext = pk.index === collected;
+    
 
     gctx.save();
-    gctx.shadowColor = c; gctx.shadowBlur = isNext ? 22 : 10;
-    gctx.beginPath(); gctx.arc(pk.x, py, isNext?18:14, 0, Math.PI*2);
-    gctx.fillStyle = isNext ? c+'33' : c+'18';
-    gctx.strokeStyle = c; gctx.lineWidth = isNext?2.5:1.5;
+    gctx.shadowColor = c;
+    gctx.shadowBlur = 10;
+    gctx.beginPath();
+    gctx.arc(pk.x, py, 14, 0, Math.PI*2);
+    gctx.fillStyle = c+'18';
+    gctx.strokeStyle = c;
+    gctx.lineWidth = 1.5;
     gctx.fill(); gctx.stroke();
     gctx.restore();
 
-    gctx.fillStyle = isNext ? '#fff' : c;
-    gctx.font = `bold ${isNext?13:11}px Orbitron, monospace`;
+    gctx.fillStyle = c;
+    gctx.font = `bold 11px Orbitron, monospace`;
     gctx.textAlign='center'; gctx.textBaseline='middle';
     gctx.fillText(pk.type, pk.x, py);
     gctx.textBaseline='alphabetic';
 
-    if (isNext) {
-      // Pulse ring
-      const pr = 24 + Math.sin(t*3)*4;
-      gctx.beginPath(); gctx.arc(pk.x, py, pr, 0, Math.PI*2);
-      gctx.strokeStyle = c+'55'; gctx.lineWidth = 1;
-      gctx.stroke();
-    }
+ 
   }
 }
 
