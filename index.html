@@ -1127,10 +1127,7 @@ function gameLoop(ts) {
   // render
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
-  if (state.level === 1) 
-  drawDNAStrand();   // ← ADD THIS LINE
-  drawNucleotides(); 
-  drawMRNAStrip(); 
+  if (state.level === 1) { drawNucleotides(); drawMRNAStrip(); }
   else                   { drawTRNAs(); drawCodonTrack(); }
   drawParticles();
  
@@ -1251,3 +1248,4 @@ window.addEventListener('resize', () => {
 </script>
 </body>
 </html>
+ 
