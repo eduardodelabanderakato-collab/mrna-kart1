@@ -426,7 +426,7 @@ html, body {
   <h2>mRNA STRAND COMPLETE!</h2>
   <div id="trans-mrna"></div>
   <p>
-    The <strong>mRNA</strong> exits the Nucleus through the <strong>small opening</strong>
+    The <strong>mRNA</strong> exits the Nucleus through the <strong>Nuclear Pore</strong>
     and enters the <strong>Cytoplasm</strong>.<br>
     The <strong>Ribosome</strong> will now read the codons and begin <strong>Translation</strong>.
   </p>
@@ -565,6 +565,7 @@ function makeTRNAItems() {
     if (!used.includes(d)) { dec.push(d); used.push(d); }
     if (dec.length >= 2) break;
   }
+  // All same color — no visual hint about which is correct
   const pool = [
     { kind:'trna', text:correct.anti, isOk:true,  aa:correct.aa, full:correct.full, r:30, sub:'tRNA ANTICODON' },
     { kind:'trna', text:dec[0],       isOk:false, aa:'???',       full:'',           r:30, sub:'tRNA ANTICODON' },
@@ -718,6 +719,128 @@ function drawBackground() {
   ctx.restore();
 }
  
+// ── DRAW: DNA DOUBLE STRAND (Level 1 background) ─────────────────────────────
+// Draws a horizontal double helix template strand so students see what's being read
+function drawDNAStrand() {
+  const W  = canvas.width, H = canvas.height;
+  const y0 = 36;           // top of strand area
+  const yMid = y0 + 28;    // centre line
+  const baseColors = { A:'#ff6680', T:'#ffaa33', G:'#44ddaa', C:'#6699ff' };
+  const rnaColors  = { U:'#ff6680', A:'#ffaa33', C:'#44ddaa', G:'#6699ff' };
+ 
+  // Draw a label
+  ctx.save();
+  ctx.font = '8px Orbitron, monospace';
+  ctx.fillStyle = 'rgba(0,200,255,0.35)';
+  ctx.textAlign = 'left';
+  ctx.fillText('DNA TEMPLATE STRAND  →  READ BY RNA POLYMERASE', 12, y0 - 6);
+  ctx.restore();
+ 
+  const n     = DNA_SEQ.length;
+  const xStart = 20;
+  const xEnd   = W - 20;
+  const step   = (xEnd - xStart) / (n + 1);
+ 
+  // Draw backbone lines (top strand = DNA template, bottom = coding strand)
+  const topY = yMid - 18, botY = yMid + 18;
+ 
+  // top backbone
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,200,255,0.25)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(xStart, topY); ctx.lineTo(xEnd, topY); ctx.stroke();
+  // bottom backbone
+  ctx.strokeStyle = 'rgba(0,200,255,0.12)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(xStart, botY); ctx.lineTo(xEnd, botY); ctx.stroke();
+  ctx.restore();
+ 
+  // "5'" and "3'" end labels
+  ctx.save();
+  ctx.font = '8px Share Tech Mono, monospace';
+  ctx.fillStyle = 'rgba(0,200,255,0.4)';
+  ctx.textAlign = 'left';  ctx.fillText("3'", xStart - 2, topY + 3);
+  ctx.textAlign = 'right'; ctx.fillText("5'", xEnd + 2,   topY + 3);
+  ctx.fillStyle = 'rgba(0,200,255,0.2)';
+  ctx.textAlign = 'left';  ctx.fillText("5'", xStart - 2, botY + 3);
+  ctx.textAlign = 'right'; ctx.fillText("3'", xEnd + 2,   botY + 3);
+  ctx.restore();
+ 
+  DNA_SEQ.forEach((base, i) => {
+    const x        = xStart + (i + 1) * step;
+    const rnaBase  = RNA_PAIR[base];
+    const done     = i < state.dnaIdx;
+    const isNext   = i === state.dnaIdx;
+    const col      = baseColors[base] || '#aaa';
+    const rnaCol   = rnaColors[rnaBase] || '#aaa';
+    const alpha    = done ? 0.2 : isNext ? 1.0 : 0.55;
+ 
+    ctx.save();
+    ctx.globalAlpha = alpha;
+ 
+    // vertical rung (hydrogen bond)
+    ctx.strokeStyle = isNext ? 'rgba(255,255,100,0.5)' : 'rgba(100,150,200,0.2)';
+    ctx.lineWidth = isNext ? 2 : 1;
+    ctx.setLineDash(isNext ? [] : [3,3]);
+    ctx.beginPath(); ctx.moveTo(x, topY + 10); ctx.lineTo(x, botY - 10); ctx.stroke();
+    ctx.setLineDash([]);
+ 
+    // TOP: DNA template base circle
+    ctx.beginPath(); ctx.arc(x, topY, 10, 0, Math.PI * 2);
+    ctx.fillStyle   = done ? '#111' : '#001830';
+    ctx.strokeStyle = col;
+    ctx.lineWidth   = isNext ? 2 : 1.5;
+    ctx.shadowColor = col; ctx.shadowBlur = isNext ? 14 : 4;
+    ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.font = `bold ${isNext ? 11 : 9}px Orbitron, sans-serif`;
+    ctx.fillStyle = done ? '#333' : col;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(base, x, topY);
+ 
+    // BOTTOM: complementary DNA coding strand
+    const compDNA = { A:'T', T:'A', G:'C', C:'G' }[base];
+    const compCol = baseColors[compDNA] || '#aaa';
+    ctx.beginPath(); ctx.arc(x, botY, 10, 0, Math.PI * 2);
+    ctx.fillStyle   = done ? '#0a0a0a' : '#00100a';
+    ctx.strokeStyle = compCol;
+    ctx.lineWidth   = 1.2;
+    ctx.shadowColor = compCol; ctx.shadowBlur = done ? 0 : 3;
+    ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.font = '8px Orbitron, sans-serif';
+    ctx.fillStyle = done ? '#222' : compCol;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(compDNA, x, botY);
+ 
+    // If collected: show what mRNA base was made, with arrow
+    if (done) {
+      ctx.globalAlpha = 0.55;
+      ctx.font = '8px Share Tech Mono, monospace';
+      ctx.fillStyle = rnaCol;
+      ctx.textAlign = 'center';
+      ctx.fillText('→' + rnaBase, x, topY - 18);
+    }
+ 
+    // "NEXT" arrow above current target
+    if (isNext) {
+      ctx.globalAlpha = 0.75 + 0.25 * Math.sin(bgTime * 4);
+      ctx.font = 'bold 8px Orbitron, monospace';
+      ctx.fillStyle = '#ffff00';
+      ctx.textAlign = 'center';
+      ctx.fillText('▼ NEXT', x, topY - 20);
+    }
+ 
+    ctx.restore();
+  });
+ 
+  // Strand labels on the right
+  ctx.save();
+  ctx.font = '7px Share Tech Mono, monospace';
+  ctx.fillStyle = 'rgba(0,200,255,0.35)';
+  ctx.textAlign = 'left';
+  ctx.fillText('TEMPLATE STRAND (read by RNA Pol)', xEnd + 6, topY + 3);
+  ctx.fillStyle = 'rgba(0,200,255,0.2)';
+  ctx.fillText('CODING STRAND', xEnd + 6, botY + 3);
+  ctx.restore();
+}
+ 
 // ── DRAW: NUCLEOTIDES (Level 1) ───────────────────────────────────────────────
 function drawNucleotides() {
   entities.forEach((e, i) => {
@@ -798,12 +921,12 @@ function drawMRNAStrip() {
   ctx.restore();
 }
  
-// ── DRAW: tRNAs (Level 2) ─────────────────────────────────────────────────────
+// ── DRAW: tRNAs (Level 2) — all same cyan color, no correctness hint ──────────
 function drawTRNAs() {
+  const col = '#00c8ff'; // same color for ALL tRNAs — student must read anticodon
   entities.forEach(e => {
     if (e.collected) return;
-    const sc  = 1 + 0.07 * Math.sin(bgTime * 2.8 + e.phase);
-    const col = e.isOk ? '#00ff88' : '#ff3366';
+    const sc = 1 + 0.07 * Math.sin(bgTime * 2.8 + e.phase);
  
     ctx.save();
     ctx.translate(e.x, e.y);
@@ -819,7 +942,7 @@ function drawTRNAs() {
         : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
     }
     ctx.closePath();
-    ctx.fillStyle   = e.isOk ? '#001a0a' : '#1a0008';
+    ctx.fillStyle   = '#001a2a';
     ctx.strokeStyle = col;
     ctx.lineWidth   = 2.2;
     ctx.shadowColor = col; ctx.shadowBlur = 14;
@@ -834,7 +957,7 @@ function drawTRNAs() {
     // sub-label
     ctx.save();
     ctx.font = '8px Share Tech Mono, monospace';
-    ctx.fillStyle = e.isOk ? '#226644' : '#662233';
+    ctx.fillStyle = 'rgba(0,180,220,0.5)';
     ctx.textAlign = 'center';
     ctx.fillText(e.sub, e.x, e.y + e.r + 14);
     ctx.restore();
@@ -1125,4 +1248,3 @@ window.addEventListener('resize', () => {
 </script>
 </body>
 </html>
- 
